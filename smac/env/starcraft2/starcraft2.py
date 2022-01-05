@@ -95,11 +95,13 @@ class StarCraft2Env(MultiAgentEnv):
         reward_scale_rate=20,
         replace_teammates=False,
         stochastic_attack=False,
-        attack_probabilities_in_state=False,
         attack_probability_low=0.7,
         attack_probability_high=1.0,
         fully_observable=False,
         teammate_distribution="stub",
+        show_capabilities=False,
+        zero_pad_stochastic_attack=False,
+        zero_pad_unit_types=False,
         replay_dir="",
         replay_prefix="",
         window_size_x=1920,
@@ -251,8 +253,15 @@ class StarCraft2Env(MultiAgentEnv):
             attack_probability_high=attack_probability_high,
         )
         self.stochastic_attack = stochastic_attack
-        self.attack_probabilities_in_state = attack_probabilities_in_state
         self.fully_observable = fully_observable
+        self.show_capabilities = show_capabilities
+        self.zero_pad_stochastic_attack = zero_pad_stochastic_attack
+        self.zero_pad_unit_types = zero_pad_unit_types
+        assert (
+            not self.zero_pad_stochastic_attack or not self.show_capabilities
+        )
+        assert not self.zero_pad_unit_types or not self.show_capabilities
+        self._turn_on_capability_flags()
 
         # Other
         self.game_version = game_version
@@ -297,7 +306,7 @@ class StarCraft2Env(MultiAgentEnv):
         if self.shield_bits_enemy > 0:
             self.enemy_state_attr_names += ["shield"]
 
-        if self.stochastic_attack and self.attack_probabilities_in_state:
+        if self.stochastic_attack or self.zero_pad_stochastic_attack:
             self.ally_state_attr_names += ["attack_probability"]
         if self.unit_type_bits > 0:
             bit_attr_names = [
@@ -340,6 +349,10 @@ class StarCraft2Env(MultiAgentEnv):
         self._controller = None
         # Try to avoid leaking SC2 processes on shutdown
         atexit.register(lambda: self.close())
+
+    def _turn_on_capability_flags(self):
+        self.observe_attack_probs = self.show_capabilities
+        self.observe_teammate_types = self.show_capabilities
 
     def _launch(self):
         """Launch the StarCraft II game."""
@@ -1118,12 +1131,25 @@ class StarCraft2Env(MultiAgentEnv):
                                 al_unit.shield / max_shield
                             )  # shield
                             ind += 1
-
-                    if self.unit_type_bits > 0:
+                    if self.observe_attack_probs:
+                        ally_feats[i, ind] = self.agent_attack_probabilities[
+                            al_id
+                        ]
+                        ind += 1
+                    elif self.zero_pad_stochastic_attack:
+                        ind += 1
+                    if self.unit_type_bits > 0 and (
+                        (
+                            not self.replace_teammates
+                            and not self.zero_pad_unit_types
+                        )
+                        or self.observe_teammate_types
+                    ):
                         type_id = self.get_unit_type_id(al_unit, True)
                         ally_feats[i, ind + type_id] = 1
                         ind += self.unit_type_bits
-
+                    elif self.unit_type_bits > 0 and self.zero_pad_unit_types:
+                        ind += self.unit_type_bits
                     if self.obs_last_action:
                         ally_feats[i, ind:] = self.last_action[al_id]
 
@@ -1140,10 +1166,14 @@ class StarCraft2Env(MultiAgentEnv):
             if self.stochastic_attack:
                 own_feats[ind] = self.agent_attack_probabilities[agent_id]
                 ind += 1
+            elif self.zero_pad_stochastic_attack:
+                ind += 1
 
-            if self.unit_type_bits > 0:
+            if self.unit_type_bits > 0 and not self.zero_pad_unit_types:
                 type_id = self.get_unit_type_id(unit, True)
                 own_feats[ind + type_id] = 1
+            elif self.unit_type_bits > 0 and self.zero_pad_unit_types:
+                ind += self.unit_type_bits
 
         agent_obs = np.concatenate(
             (
@@ -1275,16 +1305,17 @@ class StarCraft2Env(MultiAgentEnv):
                     )  # shield
                     ind += 1
 
-                if (
-                    self.stochastic_attack
-                    and self.attack_probabilities_in_state
-                ):
+                if self.stochastic_attack:
                     ally_state[al_id, ind] = self.agent_attack_probabilities[
                         al_id
                     ]
                     ind += 1
+                elif self.zero_pad_stochastic_attack:
+                    ind += 1
 
-                if self.unit_type_bits > 0:
+                if self.unit_type_bits > 0 and (
+                    self.replace_teammates or not self.zero_pad_unit_types
+                ):
                     type_id = self.get_unit_type_id(al_unit, True)
                     ally_state[al_id, type_id - self.unit_type_bits] = 1
 
@@ -1335,7 +1366,17 @@ class StarCraft2Env(MultiAgentEnv):
         """Returns the dimensions of the matrix containing ally features.
         Size is n_allies x n_features.
         """
-        nf_al = 4 + self.unit_type_bits
+        nf_al = 4
+
+        if (
+            not self.replace_teammates
+            or self.observe_teammate_types
+            or self.zero_pad_unit_types
+        ):
+            nf_al += self.unit_type_bits
+
+        if self.observe_attack_probs or self.zero_pad_stochastic_attack:
+            nf_al += 1
 
         if self.obs_all_health:
             nf_al += 1 + self.shield_bits_ally
@@ -1354,7 +1395,7 @@ class StarCraft2Env(MultiAgentEnv):
             own_feats += 1 + self.shield_bits_ally
         if self.obs_timestep_number:
             own_feats += 1
-        if self.stochastic_attack:
+        if self.stochastic_attack or self.zero_pad_stochastic_attack:
             own_feats += 1
 
         return own_feats
@@ -1389,8 +1430,8 @@ class StarCraft2Env(MultiAgentEnv):
         if self.obs_instead_of_state:
             return self.get_obs_size() * self.n_agents
 
-        nf_al = 4 + self.shield_bits_ally + self.unit_type_bits
-        nf_en = 3 + self.shield_bits_enemy + self.unit_type_bits
+        nf_al = self.get_ally_num_attributes()
+        nf_en = self.get_enemy_num_attributes()
 
         enemy_state = self.n_enemies * nf_en
         ally_state = self.n_agents * nf_al
