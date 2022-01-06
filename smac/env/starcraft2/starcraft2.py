@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
+from re import I
 
 from smac.env.multiagentenv import MultiAgentEnv
 from smac.env.starcraft2.attack_distributions import (
@@ -106,6 +107,7 @@ class StarCraft2Env(MultiAgentEnv):
         kill_unit_step_mul=2,
         fully_observable=False,
         teammate_distribution="stub",
+        ally_teams=None,
         show_capabilities=False,
         zero_pad_stochastic_attack=False,
         zero_pad_unit_types=False,
@@ -273,6 +275,7 @@ class StarCraft2Env(MultiAgentEnv):
         self.zero_pad_stochastic_attack = zero_pad_stochastic_attack
         self.zero_pad_unit_types = zero_pad_unit_types
         self.zero_pad_health = zero_pad_health
+        self.team_distribution_kwargs = {"ally_team_compositions": ally_teams}
         assert (
             not self.zero_pad_stochastic_attack or not self.show_capabilities
         )
@@ -289,6 +292,7 @@ class StarCraft2Env(MultiAgentEnv):
         assert self.replace_teammates or (
             not self.zero_pad_unit_types and not self.observe_teammate_types
         )
+        assert ally_teams is None or teammate_distribution == "fixed_team"
 
         # Other
         self.game_version = game_version
@@ -346,6 +350,8 @@ class StarCraft2Env(MultiAgentEnv):
 
         self.agents = {}
         self.enemies = {}
+        self.unit_name_to_id_map = {}
+        self.id_to_unit_name_map = {}
         self._episode_count = 0
         self._episode_steps = 0
         self._total_steps = 0
@@ -1715,14 +1721,22 @@ class StarCraft2Env(MultiAgentEnv):
         self._kill_units(units_alive)
 
     def _create_new_team(self):
-        unit_types = {unit.unit_type for unit in self.agents.values()}
+        unit_names = {
+            self.id_to_unit_name_map[unit.unit_type]
+            for unit in self.agents.values()
+        }
         old_unit_tags = [unit.tag for unit in self.agents.values()]
 
         if not self.distribution_function:
             self.distribution_function = self.distribution_function_init(
-                unit_types, self.n_agents, self.enemies.values()
+                unit_names,
+                self.n_agents,
+                self.enemies.values(),
+                **self.team_distribution_kwargs,
             )
-        new_unit_types = self.distribution_function()
+        new_unit_types = self._convert_unit_name_to_unit_type(
+            self.distribution_function()
+        )
 
         for i, unit_type in enumerate(new_unit_types):
             unit = self.get_unit_by_id(i)
@@ -1745,6 +1759,11 @@ class StarCraft2Env(MultiAgentEnv):
             self.full_restart()
             self.reset()
         self.init_units(recurse=False)
+
+    def _convert_unit_name_to_unit_type(self, unit_names):
+        return [
+            self.unit_name_to_id_map[unit_name] for unit_name in unit_names
+        ]
 
     def init_units(self, recurse=True):
         """Initialise the units."""
@@ -1872,6 +1891,10 @@ class StarCraft2Env(MultiAgentEnv):
 
         return None
 
+    def _register_unit_mapping(self, unit_name, unit_type_id):
+        self.id_to_unit_name_map[unit_type_id] = unit_name
+        self.unit_name_to_id_map[unit_name] = unit_type_id
+
     def _init_ally_unit_types(self, min_unit_type):
         """Initialise ally unit types. Should be called once from the
         init_units function.
@@ -1879,28 +1902,43 @@ class StarCraft2Env(MultiAgentEnv):
         self._min_unit_type = min_unit_type
         if self.map_type == "marines":
             self.marine_id = min_unit_type
+            self._register_unit_mapping("marine", min_unit_type)
         elif self.map_type == "stalkers_and_zealots":
             self.stalker_id = min_unit_type
+            self._register_unit_mapping("stalker", min_unit_type)
             self.zealot_id = min_unit_type + 1
+            self._register_unit_mapping("zealot", min_unit_type + 1)
         elif self.map_type == "colossi_stalkers_zealots":
             self.colossus_id = min_unit_type
+            self._register_unit_mapping("colossus", min_unit_type)
             self.stalker_id = min_unit_type + 1
+            self._register_unit_mapping("stalker", min_unit_type + 1)
             self.zealot_id = min_unit_type + 2
+            self._register_unit_mapping("zealot", min_unit_type + 2)
         elif self.map_type == "MMM":
             self.marauder_id = min_unit_type
+            self._register_unit_mapping("marauder", min_unit_type)
             self.marine_id = min_unit_type + 1
+            self._register_unit_mapping("marine", min_unit_type + 1)
             self.medivac_id = min_unit_type + 2
+            self._register_unit_mapping("medivac", min_unit_type + 2)
         elif self.map_type == "zealots":
             self.zealot_id = min_unit_type
+            self._register_unit_mapping("zealot", min_unit_type)
         elif self.map_type == "hydralisks":
             self.hydralisk_id = min_unit_type
+            self._register_unit_mapping("hydralisk", min_unit_type)
         elif self.map_type == "stalkers":
             self.stalker_id = min_unit_type
+            self._register_unit_mapping("stalker", min_unit_type)
         elif self.map_type == "colossus":
             self.colossus_id = min_unit_type
+            self._register_unit_mapping("colossus", min_unit_type)
         elif self.map_type == "bane":
             self.baneling_id = min_unit_type
+            self._register_unit_mapping("baneling", min_unit_type)
             self.zergling_id = min_unit_type + 1
+            self._register_unit_mapping("zergling", min_unit_type + 1)
 
     def only_medivac_left(self, ally):
         """Check if only Medivac units are left."""
