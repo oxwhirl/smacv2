@@ -7,7 +7,10 @@ from smac.env.starcraft2.attack_distributions import (
     uniform_attack_distribution,
 )
 from smac.env.starcraft2.maps import get_map_params
-from smac.env.starcraft2.team_distributions import get_distribution_function
+from smac.env.starcraft2.team_distributions import (
+    all_teams_distribution_function,
+    get_distribution_function,
+)
 
 import atexit
 from warnings import warn
@@ -97,11 +100,16 @@ class StarCraft2Env(MultiAgentEnv):
         stochastic_attack=False,
         attack_probability_low=0.7,
         attack_probability_high=1.0,
+        stochastic_health=False,
+        health_low=0.0,
+        health_high=0.25,
+        kill_unit_step_mul=2,
         fully_observable=False,
         teammate_distribution="stub",
         show_capabilities=False,
         zero_pad_stochastic_attack=False,
         zero_pad_unit_types=False,
+        zero_pad_health=False,
         replay_dir="",
         replay_prefix="",
         window_size_x=1920,
@@ -214,6 +222,7 @@ class StarCraft2Env(MultiAgentEnv):
         self.episode_limit = map_params["limit"]
         self._move_amount = move_amount
         self._step_mul = step_mul
+        self._kill_unit_step_mul = kill_unit_step_mul
         self.difficulty = difficulty
 
         # Observations and state
@@ -253,15 +262,33 @@ class StarCraft2Env(MultiAgentEnv):
             attack_probability_high=attack_probability_high,
         )
         self.stochastic_attack = stochastic_attack
+        self.health_distribution = uniform_attack_distribution(
+            self.n_agents,
+            attack_probability_low=health_low,
+            attack_probability_high=health_high,
+        )
+        self.stochastic_health = stochastic_health
         self.fully_observable = fully_observable
         self.show_capabilities = show_capabilities
         self.zero_pad_stochastic_attack = zero_pad_stochastic_attack
         self.zero_pad_unit_types = zero_pad_unit_types
+        self.zero_pad_health = zero_pad_health
         assert (
             not self.zero_pad_stochastic_attack or not self.show_capabilities
         )
         assert not self.zero_pad_unit_types or not self.show_capabilities
+        assert not self.zero_pad_health or not self.show_capabilities
         self._turn_on_capability_flags()
+        assert self.stochastic_attack or (
+            not self.zero_pad_stochastic_attack
+            and not self.observe_attack_probs
+        )
+        assert self.stochastic_health or (
+            not self.zero_pad_health and not self.observe_teammate_health
+        )
+        assert self.replace_teammates or (
+            not self.zero_pad_unit_types and not self.observe_teammate_types
+        )
 
         # Other
         self.game_version = game_version
@@ -306,8 +333,10 @@ class StarCraft2Env(MultiAgentEnv):
         if self.shield_bits_enemy > 0:
             self.enemy_state_attr_names += ["shield"]
 
-        if self.stochastic_attack or self.zero_pad_stochastic_attack:
+        if self.stochastic_attack:
             self.ally_state_attr_names += ["attack_probability"]
+        if self.stochastic_health:
+            self.ally_state_attr_names += ["total_health"]
         if self.unit_type_bits > 0:
             bit_attr_names = [
                 "type_{}".format(bit) for bit in range(self.unit_type_bits)
@@ -327,6 +356,7 @@ class StarCraft2Env(MultiAgentEnv):
         self.force_restarts = 0
         self.last_stats = None
         self.agent_attack_probabilities = np.zeros(self.n_agents)
+        self.agent_health_levels = np.zeros(self.n_agents)
         self.death_tracker_ally = np.zeros(self.n_agents)
         self.death_tracker_enemy = np.zeros(self.n_enemies)
         self.previous_ally_units = None
@@ -351,8 +381,15 @@ class StarCraft2Env(MultiAgentEnv):
         atexit.register(lambda: self.close())
 
     def _turn_on_capability_flags(self):
-        self.observe_attack_probs = self.show_capabilities
-        self.observe_teammate_types = self.show_capabilities
+        self.observe_attack_probs = (
+            self.show_capabilities and self.stochastic_attack
+        )
+        self.observe_teammate_types = (
+            self.show_capabilities and self.replace_teammates
+        )
+        self.observe_teammate_health = (
+            self.show_capabilities and self.stochastic_health
+        )
 
     def _launch(self):
         """Launch the StarCraft II game."""
@@ -447,6 +484,7 @@ class StarCraft2Env(MultiAgentEnv):
 
         # Information kept for counting the reward
         self.agent_attack_probabilities = self.attack_distribution()
+        self.agent_health_levels = self.health_distribution()
         self.death_tracker_ally = np.zeros(self.n_agents)
         self.death_tracker_enemy = np.zeros(self.n_enemies)
         self.previous_ally_units = None
@@ -457,6 +495,7 @@ class StarCraft2Env(MultiAgentEnv):
             logging.debug(
                 f"Attack Probabilities: {self.agent_attack_probabilities}"
             )
+            logging.debug(f"Health Levels: {self.agent_health_levels}")
         self.last_action = np.zeros((self.n_agents, self.n_actions))
 
         if self.heuristic_ai:
@@ -494,8 +533,20 @@ class StarCraft2Env(MultiAgentEnv):
         self._launch()
         self.force_restarts += 1
 
+    def _kill_units_below_health_level(self):
+        units_to_kill = []
+        for al_id, al_unit in self.agents.items():
+            if (
+                al_unit.health / al_unit.health_max
+                < self.agent_health_levels[al_id]
+            ) and not self.death_tracker_ally[al_id]:
+                units_to_kill.append(al_unit.tag)
+        self._kill_units(units_to_kill)
+
     def step(self, actions):
         """A single environment step. Returns reward, terminated, info."""
+        # TODO add loop over agents checking their health levels.
+        # If less than the threshold, then kill them.
         actions_int = [int(a) for a in actions]
 
         self.last_action = np.eye(self.n_actions)[np.array(actions_int)]
@@ -521,13 +572,19 @@ class StarCraft2Env(MultiAgentEnv):
         try:
             self._controller.actions(req_actions)
             # Make step in SC2, i.e. apply actions
-            self._controller.step(self._step_mul)
+            if not self.stochastic_health:
+                self._controller.step(self._step_mul)
+            else:
+                self._controller.step(
+                    self._step_mul - self._kill_unit_step_mul
+                )
+                self._kill_units_below_health_level()
+                self._controller.step(self._kill_unit_step_mul)
             # Observe here so that we know if the episode is over.
             self._obs = self._controller.observe()
         except (protocol.ProtocolError, protocol.ConnectionError):
             self.full_restart()
             return 0, True, {}
-
         self._total_steps += 1
         self._episode_steps += 1
 
@@ -831,6 +888,9 @@ class StarCraft2Env(MultiAgentEnv):
         self.reward_only_positive == False, - (damage dealt to ally units
         + reward_death_value per ally unit killed) * self.reward_negative_scale
         """
+        assert (
+            not self.stochastic_health or self.reward_only_positive
+        ), "Different Health Levels are currently only compatible with positive rewards"
         if self.reward_sparse:
             return 0
 
@@ -998,6 +1058,27 @@ class StarCraft2Env(MultiAgentEnv):
         ]
         return vals
 
+    def _compute_health(self, agent_id, unit):
+        """Each agent has a health bar with max health
+        `health_max` and current health `health`. We set a level
+        `health_level` between `0` and `1` where the agent dies if its
+        proportional health (`health / health_max`) is below that level.
+        This function rescales health to take into account this death level.
+
+        In the proportional health scale we have something that looks like this:
+
+        -------------------------------------------------------------
+        0                                                            1
+                  ^ health_level            ^ proportional_health
+        And so we compute
+            (proportional_health - health_level) / (1 - health_level)
+        """
+        proportional_health = unit.health / unit.health_max
+        health_level = self.agent_health_levels[agent_id]
+        return (1.0 / (1 - health_level)) * (
+            proportional_health - health_level
+        )
+
     def get_obs_agent(self, agent_id, fully_observable=False):
         """Returns observation for agent_id. The observation is composed of:
 
@@ -1121,28 +1202,42 @@ class StarCraft2Env(MultiAgentEnv):
 
                     ind = 4
                     if self.obs_all_health:
-                        ally_feats[i, ind] = (
-                            al_unit.health / al_unit.health_max
-                        )  # health
-                        ind += 1
+                        if not self.stochastic_health:
+                            ally_feats[i, ind] = (
+                                al_unit.health / al_unit.health_max
+                            )  # health
+                            ind += 1
+                        elif self.observe_teammate_health:
+                            ally_feats[i, ind] = self._compute_health(
+                                agent_id=al_id, unit=al_unit
+                            )
+                            ind += 1
+                        elif self.zero_pad_health:
+                            ind += 1
                         if self.shield_bits_ally > 0:
                             max_shield = self.unit_max_shield(al_unit)
                             ally_feats[i, ind] = (
                                 al_unit.shield / max_shield
                             )  # shield
                             ind += 1
-                    if self.observe_attack_probs:
+                    if self.observe_attack_probs and self.stochastic_attack:
                         ally_feats[i, ind] = self.agent_attack_probabilities[
                             al_id
                         ]
                         ind += 1
-                    elif self.zero_pad_stochastic_attack:
+                    elif (
+                        self.zero_pad_stochastic_attack
+                        and self.stochastic_attack
+                    ):
+                        ind += 1
+
+                    if self.stochastic_health and self.observe_teammate_health:
+                        ally_feats[i, ind] = self.agent_health_levels[al_id]
+                        ind += 1
+                    elif self.stochastic_health and self.zero_pad_health:
                         ind += 1
                     if self.unit_type_bits > 0 and (
-                        (
-                            not self.replace_teammates
-                            and not self.zero_pad_unit_types
-                        )
+                        not self.replace_teammates
                         or self.observe_teammate_types
                     ):
                         type_id = self.get_unit_type_id(al_unit, True)
@@ -1156,7 +1251,10 @@ class StarCraft2Env(MultiAgentEnv):
             # Own features
             ind = 0
             if self.obs_own_health:
-                own_feats[ind] = unit.health / unit.health_max
+                if not self.stochastic_health:
+                    own_feats[ind] = unit.health / unit.health_max
+                else:
+                    own_feats[ind] = self._compute_health(agent_id, unit)
                 ind += 1
                 if self.shield_bits_ally > 0:
                     max_shield = self.unit_max_shield(unit)
@@ -1166,14 +1264,12 @@ class StarCraft2Env(MultiAgentEnv):
             if self.stochastic_attack:
                 own_feats[ind] = self.agent_attack_probabilities[agent_id]
                 ind += 1
-            elif self.zero_pad_stochastic_attack:
+            if self.stochastic_health:
+                own_feats[ind] = self.agent_health_levels[agent_id]
                 ind += 1
-
-            if self.unit_type_bits > 0 and not self.zero_pad_unit_types:
+            if self.unit_type_bits > 0:
                 type_id = self.get_unit_type_id(unit, True)
                 own_feats[ind + type_id] = 1
-            elif self.unit_type_bits > 0 and self.zero_pad_unit_types:
-                ind += self.unit_type_bits
 
         agent_obs = np.concatenate(
             (
@@ -1277,10 +1373,12 @@ class StarCraft2Env(MultiAgentEnv):
                 x = al_unit.pos.x
                 y = al_unit.pos.y
                 max_cd = self.unit_max_cooldown(al_unit)
-
-                ally_state[al_id, 0] = (
-                    al_unit.health / al_unit.health_max
-                )  # health
+                if not self.stochastic_health:
+                    ally_state[al_id, 0] = (
+                        al_unit.health / al_unit.health_max
+                    )  # health
+                else:
+                    ally_state[al_id, 0] = self._compute_health(al_id, al_unit)
                 if (
                     self.map_type == "MMM"
                     and al_unit.unit_type == self.medivac_id
@@ -1310,12 +1408,10 @@ class StarCraft2Env(MultiAgentEnv):
                         al_id
                     ]
                     ind += 1
-                elif self.zero_pad_stochastic_attack:
+                if self.stochastic_health:
+                    ally_state[al_id, ind] = self.agent_health_levels[al_id]
                     ind += 1
-
-                if self.unit_type_bits > 0 and (
-                    self.replace_teammates or not self.zero_pad_unit_types
-                ):
+                if self.unit_type_bits > 0:
                     type_id = self.get_unit_type_id(al_unit, True)
                     ally_state[al_id, type_id - self.unit_type_bits] = 1
 
@@ -1368,14 +1464,20 @@ class StarCraft2Env(MultiAgentEnv):
         """
         nf_al = 4
 
-        if (
-            not self.replace_teammates
-            or self.observe_teammate_types
-            or self.zero_pad_unit_types
+        if not self.replace_teammates or (
+            self.replace_teammates
+            and (self.observe_teammate_types or self.zero_pad_unit_types)
         ):
             nf_al += self.unit_type_bits
 
-        if self.observe_attack_probs or self.zero_pad_stochastic_attack:
+        if self.stochastic_attack and (
+            self.zero_pad_stochastic_attack or self.observe_attack_probs
+        ):
+            nf_al += 1
+
+        if self.stochastic_health and (
+            self.observe_teammate_health or self.zero_pad_health
+        ):
             nf_al += 1
 
         if self.obs_all_health:
@@ -1395,7 +1497,11 @@ class StarCraft2Env(MultiAgentEnv):
             own_feats += 1 + self.shield_bits_ally
         if self.obs_timestep_number:
             own_feats += 1
-        if self.stochastic_attack or self.zero_pad_stochastic_attack:
+        if self.stochastic_attack and (
+            self.zero_pad_stochastic_attack or self.observe_attack_probs
+        ):
+            own_feats += 1
+        if self.stochastic_health:
             own_feats += 1
 
         return own_feats
