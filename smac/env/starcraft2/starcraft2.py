@@ -4,8 +4,9 @@ from __future__ import print_function
 from re import I
 
 from smac.env.multiagentenv import MultiAgentEnv
-from smac.env.starcraft2.attack_distributions import (
-    uniform_attack_distribution,
+from smac.env.starcraft2.other_distributions import (
+    get_distribution,
+    uniform_distribution,
 )
 from smac.env.starcraft2.maps import get_map_params
 from smac.env.starcraft2.team_distributions import (
@@ -101,9 +102,13 @@ class StarCraft2Env(MultiAgentEnv):
         stochastic_attack=False,
         attack_probability_low=0.7,
         attack_probability_high=1.0,
+        attack_fixed_distributions=None,
+        attack_distribution="stub",
         stochastic_health=False,
         health_low=0.0,
         health_high=0.25,
+        health_fixed_distributions=None,
+        health_distribution="stub",
         kill_unit_step_mul=2,
         fully_observable=False,
         teammate_distribution="stub",
@@ -258,16 +263,22 @@ class StarCraft2Env(MultiAgentEnv):
             teammate_distribution
         )
         self.distribution_function = None
-        self.attack_distribution = uniform_attack_distribution(
-            self.n_agents,
-            attack_probability_low=attack_probability_low,
-            attack_probability_high=attack_probability_high,
+        attack_kwargs = {
+            "attack_probability_low": attack_probability_low,
+            "attack_probability_high": attack_probability_high,
+            "distributions": attack_fixed_distributions,
+        }
+        self.attack_distribution = get_distribution(attack_distribution)(
+            self.n_agents, **attack_kwargs
         )
         self.stochastic_attack = stochastic_attack
-        self.health_distribution = uniform_attack_distribution(
-            self.n_agents,
-            attack_probability_low=health_low,
-            attack_probability_high=health_high,
+        health_kwargs = {
+            "attack_probability_low": health_low,
+            "attack_probability_high": health_high,
+            "distributions": health_fixed_distributions,
+        }
+        self.health_distribution = get_distribution(health_distribution)(
+            self.n_agents, **health_kwargs
         )
         self.stochastic_health = stochastic_health
         self.fully_observable = fully_observable
