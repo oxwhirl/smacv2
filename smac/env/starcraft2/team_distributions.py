@@ -29,7 +29,7 @@ def stub_distribution_function(
             be used to generate a team that matches the enemies' capabilities.
     """
 
-    def get_team():
+    def get_team(test_mode=False):
         raise NotImplementedError("No distribution of teammates specified!")
 
     return get_team
@@ -51,10 +51,12 @@ def all_teams_distribution_function(
         combinations_with_replacement(ally_unit_types, n_ally_units)
     )
 
-    def get_team():
-        team = list(choice(all_combinations))
-        shuffle(team)
-        return team
+    def get_team(test_mode=False):
+        while True:
+            team = list(choice(all_combinations))
+            team_id = all_combinations.index(tuple(team))
+            shuffle(team)
+            yield team, team_id
 
     return get_team
 
@@ -68,16 +70,35 @@ def fixed_team_distribution_function(
     enemy_units: List[object],
     **kwargs,
 ):
-    team_list = list(kwargs["ally_team_compositions"])
+    train_team_list = list(kwargs["ally_train_team_compositions"])
+    test_team_list = list(kwargs["ally_test_team_compositions"])
 
-    def get_team():
-        team = list(choice(team_list))
-        assert len(team) == n_ally_units
-        assert all(
-            [team_member_type in ally_unit_types for team_member_type in team]
-        )
-        shuffle(team)
-        return team
+    def get_team(test_mode=False):
+        if not test_mode:
+            while True:
+                team = list(choice(train_team_list))
+                team_id = train_team_list.index(team)
+                assert len(team) == n_ally_units
+                assert all(
+                    [
+                        team_member_type in ally_unit_types
+                        for team_member_type in team
+                    ]
+                )
+                shuffle(team)
+                yield team, team_id
+        else:
+            while True:
+                for team_id, team in enumerate(test_team_list):
+                    assert len(team) == n_ally_units
+                    assert all(
+                        [
+                            team_member_type in ally_unit_types
+                            for team_member_type in team
+                        ]
+                    )
+                    shuffle(team)
+                    yield team, team_id
 
     return get_team
 
