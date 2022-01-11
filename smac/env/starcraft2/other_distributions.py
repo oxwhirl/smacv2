@@ -1,4 +1,3 @@
-from math import dist
 from re import I
 import numpy as np
 from random import choice, shuffle
