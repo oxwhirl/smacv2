@@ -16,6 +16,14 @@ class MultiAgentEnv(object):
         """Returns observation for agent_id."""
         raise NotImplementedError
 
+    def get_capabilities(self):
+        """Returns the capabilities of all agents in a list."""
+        raise NotImplementedError
+
+    def get_capabilities_agent(self, agent_id):
+        """Returns the capabilities of a single agent."""
+        raise NotImplementedError
+
     def get_obs_size(self):
         """Returns the size of the observation."""
         raise NotImplementedError
@@ -26,6 +34,10 @@ class MultiAgentEnv(object):
 
     def get_state_size(self):
         """Returns the size of the global state."""
+        raise NotImplementedError
+
+    def get_cap_size(self):
+        """Returns the size of the own capabilities of the agent."""
         raise NotImplementedError
 
     def get_avail_actions(self):
@@ -61,6 +73,7 @@ class MultiAgentEnv(object):
         env_info = {
             "state_shape": self.get_state_size(),
             "obs_shape": self.get_obs_size(),
+            "cap_shape": self.get_cap_size(),
             "n_actions": self.get_total_actions(),
             "n_agents": self.n_agents,
             "episode_limit": self.episode_limit,

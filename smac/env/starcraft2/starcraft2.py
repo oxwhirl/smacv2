@@ -376,15 +376,16 @@ class StarCraft2Env(MultiAgentEnv):
         if self.shield_bits_enemy > 0:
             self.enemy_state_attr_names += ["shield"]
 
+        self.capability_attr_names = []
         if self.stochastic_attack:
-            self.ally_state_attr_names += ["attack_probability"]
+            self.capability_attr_names += ["attack_probability"]
         if self.stochastic_health:
-            self.ally_state_attr_names += ["total_health"]
+            self.capability_attr_names += ["total_health"]
         if self.unit_type_bits > 0:
             bit_attr_names = [
                 "type_{}".format(bit) for bit in range(self.unit_type_bits)
             ]
-            self.ally_state_attr_names += bit_attr_names
+            self.capability_attr_names += bit_attr_names
             self.enemy_state_attr_names += bit_attr_names
 
         self.agents = {}
@@ -1402,6 +1403,32 @@ class StarCraft2Env(MultiAgentEnv):
         ]
         return agents_obs
 
+    def get_capabilities_agent(self, agent_id):
+        unit = self.get_unit_by_id(agent_id)
+        cap_feats = np.zeros(self.get_cap_size(), dtype=np.float32)
+
+        ind = 0
+        if self.stochastic_attack:
+            cap_feats[ind] = self.agent_attack_probabilities[agent_id]
+            ind += 1
+        if self.stochastic_health:
+            cap_feats[ind] = self.agent_health_levels[agent_id]
+            ind += 1
+        if self.unit_type_bits > 0:
+            type_id = self.get_unit_type_id(unit, True)
+            cap_feats[ind + type_id] = 1
+
+        return cap_feats
+
+    def get_capabilities(self):
+        """Returns all agent capabilities in a list.
+        """
+        agents_cap = [
+            self.get_capabilities_agent(i)
+            for i in range(self.n_agents)
+        ]
+        return agents_cap
+
     def get_state(self):
         """Returns the global state.
         NOTE: This functon should not be used during decentralised execution.
@@ -1434,7 +1461,7 @@ class StarCraft2Env(MultiAgentEnv):
         return state
 
     def get_ally_num_attributes(self):
-        return len(self.ally_state_attr_names)
+        return len(self.ally_state_attr_names) + len(self.capability_attr_names)
 
     def get_enemy_num_attributes(self):
         return len(self.enemy_state_attr_names)
@@ -1555,22 +1582,7 @@ class StarCraft2Env(MultiAgentEnv):
         Size is n_allies x n_features.
         """
         nf_al = 4
-
-        if not self.replace_teammates or (
-            self.replace_teammates
-            and (self.observe_teammate_types or self.zero_pad_unit_types)
-        ):
-            nf_al += self.unit_type_bits
-
-        if self.stochastic_attack and (
-            self.zero_pad_stochastic_attack or self.observe_attack_probs
-        ):
-            nf_al += 1
-
-        if self.stochastic_health and (
-            self.observe_teammate_health or self.zero_pad_health
-        ):
-            nf_al += 1
+        nf_cap = self.get_obs_ally_capability_size()
 
         if self.obs_all_health:
             nf_al += 1 + self.shield_bits_ally
@@ -1578,22 +1590,16 @@ class StarCraft2Env(MultiAgentEnv):
         if self.obs_last_action:
             nf_al += self.n_actions
 
-        return self.n_agents - 1, nf_al
+        return self.n_agents - 1, nf_al + nf_cap
 
     def get_obs_own_feats_size(self):
         """
         Returns the size of the vector containing the agents' own features.
         """
-        own_feats = self.unit_type_bits
+        own_feats = self.get_cap_size()
         if self.obs_own_health:
             own_feats += 1 + self.shield_bits_ally
         if self.obs_timestep_number:
-            own_feats += 1
-        if self.stochastic_attack and (
-            self.zero_pad_stochastic_attack or self.observe_attack_probs
-        ):
-            own_feats += 1
-        if self.stochastic_health:
             own_feats += 1
 
         return own_feats
@@ -1609,6 +1615,37 @@ class StarCraft2Env(MultiAgentEnv):
             move_feats += self.n_obs_height
 
         return move_feats
+
+    def get_obs_ally_capability_size(self):
+        """Returns the size of capabilities observed by teammates."""
+        cap_feats = 0
+        if not self.replace_teammates or (
+            self.replace_teammates
+            and (self.observe_teammate_types or self.zero_pad_unit_types)
+        ):
+            cap_feats += self.unit_type_bits
+        if self.stochastic_attack and (
+            self.zero_pad_stochastic_attack or self.observe_attack_probs
+        ):
+            cap_feats += 1
+        if self.stochastic_health and (
+            self.observe_teammate_health or self.zero_pad_health
+        ):
+            cap_feats += 1
+
+        return cap_feats
+
+    def get_cap_size(self):
+        """Returns the size of the own capabilities of the agent."""
+        cap_feats = 0
+        if self.stochastic_attack:
+            cap_feats += 1
+        if self.stochastic_health:
+            cap_feats += 1
+        if self.unit_type_bits > 0:
+            cap_feats += self.unit_type_bits
+
+        return cap_feats
 
     def get_obs_size(self):
         """Returns the size of the observation."""
@@ -2076,7 +2113,7 @@ class StarCraft2Env(MultiAgentEnv):
 
     def get_env_info(self):
         env_info = super().get_env_info()
-        env_info["agent_features"] = self.ally_state_attr_names
+        env_info["agent_features"] = self.ally_state_attr_names + self.capability_attr_names
         env_info["enemy_features"] = self.enemy_state_attr_names
         env_info["n_train_tasks"] = len(self.train_tasks)
         env_info["n_test_tasks"] = len(self.test_tasks)
