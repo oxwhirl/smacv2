@@ -1427,6 +1427,9 @@ class StarCraft2Env(MultiAgentEnv):
             self.get_capabilities_agent(i)
             for i in range(self.n_agents)
         ]
+        agents_cap = np.concatenate(agents_cap, axis=0).astype(
+            np.float32
+        )
         return agents_cap
 
     def get_state(self):
