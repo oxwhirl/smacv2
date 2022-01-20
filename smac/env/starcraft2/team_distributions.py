@@ -79,24 +79,24 @@ def fixed_team_distribution_function(
                 team = list(choice(train_team_list))
                 team_id = train_team_list.index(team)
                 assert len(team) == n_ally_units
-                assert all(
-                    [
-                        team_member_type in ally_unit_types
-                        for team_member_type in team
-                    ]
-                )
+                # assert all(
+                #     [
+                #         team_member_type in ally_unit_types
+                #         for team_member_type in team
+                #     ]
+                # )
                 shuffle(team)
                 yield team, team_id
         else:
             while True:
                 for team_id, team in enumerate(test_team_list):
                     assert len(team) == n_ally_units
-                    assert all(
-                        [
-                            team_member_type in ally_unit_types
-                            for team_member_type in team
-                        ]
-                    )
+                    # assert all(
+                    #     [
+                    #         team_member_type in ally_unit_types
+                    #         for team_member_type in team
+                    #     ]
+                    # )
                     shuffle(team)
                     yield team, team_id
 
