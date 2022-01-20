@@ -11,18 +11,23 @@ import time
 
 logging.set_verbosity(logging.DEBUG)
 
-ally_train_teams = [
-    ["marine"] * 6 + ["marauder"] * 4,
-    ["marine"] * 10,
-]
 
-ally_test_teams = [
-    ["marine"] * 4 + ["marauder"] * 3 + ["medivac"] * 3
-]
+# ally_train_teams = [
+#     ["marine"] * 6 + ["marauder"] * 4,
+#     ["marine"] * 10,
+# ]
+# ally_test_teams = [
+#     ["marine"] * 4 + ["marauder"] * 3 + ["medivac"] * 3
+# ]
+
+# ally_train_teams = [["hydralisk"] * 10]
+# ally_test_teams = [["zergling"] * 10]
+ally_train_teams = [["stalker"] * 10, ["zealot"] * 10]
+ally_test_teams = [["stalker"] * 5 + ["zealot"] * 5]
 
 def main():
     env = StarCraft2Env(
-        map_name="10gen_terran",
+        map_name="10gen_protoss",
         replace_teammates=True,
         teammate_train_distribution="fixed_team",
         teammate_test_distribution="fixed_team",

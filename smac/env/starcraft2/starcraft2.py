@@ -1900,7 +1900,6 @@ class StarCraft2Env(MultiAgentEnv):
             if not test_mode
             else next(self.test_distribution)
         )
-        print(team)
 
         # TODO hardcoding init location. change this later for new maps
         ally_init_pos = sc_common.Point2D(
