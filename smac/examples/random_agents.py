@@ -25,14 +25,16 @@ logging.set_verbosity(logging.DEBUG)
 ally_train_teams = [["stalker"] * 10, ["zealot"] * 10]
 ally_test_teams = [["stalker"] * 5 + ["zealot"] * 5]
 
+
 def main():
     env = StarCraft2Env(
-        map_name="10gen_protoss",
+        map_name="10gen_zerg",
         replace_teammates=True,
-        teammate_train_distribution="fixed_team",
-        teammate_test_distribution="fixed_team",
-        ally_train_teams=ally_train_teams,
-        ally_test_teams=ally_test_teams,
+        teammate_train_distribution="all",
+        teammate_test_distribution="all",
+        ally_unit_types=["baneling", "zergling", "hydralisk"],
+        n_units=6,
+        mask_enemies=True,
     )
     # env.reset()
 
@@ -64,7 +66,7 @@ def main():
                 actions.append(action)
 
             reward, terminated, _ = env.step(actions)
-            time.sleep( 0.15 )
+            time.sleep(0.15)
             episode_reward += reward
 
         # print("Total reward in episode {} = {}".format(e, episode_reward))
@@ -89,7 +91,7 @@ def main():
                 actions.append(action)
 
             reward, terminated, _ = env.step(actions)
-            time.sleep( 0.15 )
+            time.sleep(0.15)
             episode_reward += reward
 
         # print("Total reward in episode {} = {}".format(e, episode_reward))

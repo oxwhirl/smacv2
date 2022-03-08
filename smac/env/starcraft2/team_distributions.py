@@ -14,9 +14,7 @@ def register_distribution(distribution_str: str, distribution_fn):
 
 
 def stub_distribution_function(
-    ally_unit_types: Set[str],
     n_ally_units: int,
-    enemy_units: List[object],
     **kwargs,
 ):
     """Stub distribution function used when the meta_marl setting of SMAC is
@@ -32,23 +30,21 @@ def stub_distribution_function(
     def get_team(test_mode=False):
         raise NotImplementedError("No distribution of teammates specified!")
 
-    return get_team
+    return get_team, {}
 
 
 register_distribution("stub", stub_distribution_function)
 
 
 def all_teams_distribution_function(
-    ally_unit_types: Set[str],
     n_ally_units: int,
-    enemy_units: List[object],
     **kwargs,
 ):
     """Distribution function that just cycles through all possible ally team
     distributions. Args as specified in `stub_distribution_function`
     """
     all_combinations = list(
-        combinations_with_replacement(ally_unit_types, n_ally_units)
+        combinations_with_replacement(kwargs["ally_unit_types"], n_ally_units)
     )
 
     def get_team(test_mode=False):
@@ -58,16 +54,17 @@ def all_teams_distribution_function(
             shuffle(team)
             yield team, team_id
 
-    return get_team
+    return get_team, {
+        "n_train_tasks": len(all_combinations),
+        "n_test_tasks": len(all_combinations),
+    }
 
 
 register_distribution("all", all_teams_distribution_function)
 
 
 def fixed_team_distribution_function(
-    ally_unit_types: Set[str],
     n_ally_units: int,
-    enemy_units: List[object],
     **kwargs,
 ):
     train_team_list = list(kwargs["ally_train_team_compositions"])
@@ -100,7 +97,10 @@ def fixed_team_distribution_function(
                     shuffle(team)
                     yield team, team_id
 
-    return get_team
+    return get_team, {
+        "n_train_tasks": len(train_team_list),
+        "n_test_tasks": len(test_team_list),
+    }
 
 
 register_distribution("fixed_team", fixed_team_distribution_function)

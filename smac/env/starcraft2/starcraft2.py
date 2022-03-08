@@ -1,7 +1,6 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-from re import I
 
 from smac.env.multiagentenv import MultiAgentEnv
 from smac.env.starcraft2.other_distributions import (
@@ -118,10 +117,14 @@ class StarCraft2Env(MultiAgentEnv):
         teammate_test_distribution="stub",
         ally_train_teams=None,
         ally_test_teams=None,
+        ally_unit_types=None,
+        n_units=None,
         show_capabilities=False,
         zero_pad_stochastic_attack=False,
         zero_pad_unit_types=False,
         zero_pad_health=False,
+        mask_enemies=False,
+        mask_probability=0.5,
         replay_dir="",
         replay_prefix="",
         window_size_x=1920,
@@ -229,8 +232,10 @@ class StarCraft2Env(MultiAgentEnv):
         # Map arguments
         self.map_name = map_name
         map_params = get_map_params(self.map_name)
-        self.n_agents = map_params["n_agents"]
-        self.n_enemies = map_params["n_enemies"]
+        self.n_agents = n_units if n_units else map_params["n_agents"]
+        self.n_enemies = n_units if n_units else map_params["n_enemies"]
+        self.map_n_agents = map_params["n_agents"]
+        self.map_n_enemies = map_params["n_enemies"]
         self.episode_limit = map_params["limit"]
         self._move_amount = move_amount
         self._step_mul = step_mul
@@ -264,10 +269,10 @@ class StarCraft2Env(MultiAgentEnv):
 
         # Meta MARL
         self.replace_teammates = replace_teammates
+        self.teammate_train_distribution = teammate_train_distribution
         self.distribution_function_init = get_distribution_function(
             teammate_train_distribution
         )
-        self.distribution_function = None
         attack_kwargs = {
             "attack_probability_low": attack_probability_low,
             "attack_probability_high": attack_probability_high,
@@ -300,13 +305,25 @@ class StarCraft2Env(MultiAgentEnv):
         self.train_team_distribution_kwargs = {
             "ally_train_team_compositions": ally_train_teams,
             "ally_test_team_compositions": ally_test_teams,
+            "ally_unit_types": ally_unit_types,
         }
+        (
+            self.distribution_function,
+            self.tasks_dict,
+        ) = self.distribution_function_init(
+            self.n_agents,
+            **self.train_team_distribution_kwargs,
+        )
         self.ally_train_teams = ally_train_teams
         self.ally_test_teams = ally_test_teams
         self.attack_train_tasks = attack_fixed_train_distributions
         self.attack_test_tasks = attack_fixed_test_distributions
         self.health_train_tasks = health_fixed_train_distributions
         self.health_test_tasks = health_fixed_test_distributions
+        self.mask_enemies = mask_enemies
+        self.enemy_mask = np.zeros((self.n_agents, self.n_enemies))
+        self.enemy_mask_probability = mask_probability
+        self.rng = np.random.default_rng()
         self._set_test_and_train_tasks()
         assert self._only_one_meta_marl_flag_on()
         assert (
@@ -437,14 +454,14 @@ class StarCraft2Env(MultiAgentEnv):
 
     def _set_test_and_train_tasks(self):
         if self.stochastic_attack:
-            self.train_tasks = self.attack_train_tasks
-            self.test_tasks = self.attack_test_tasks
+            self.n_train_tasks = len(self.attack_train_tasks)
+            self.n_test_tasks = len(self.attack_test_tasks)
         elif self.stochastic_health:
-            self.train_tasks = self.health_train_tasks
-            self.test_tasks = self.health_test_tasks
+            self.n_train_tasks = len(self.health_train_tasks)
+            self.n_test_tasks = len(self.health_test_tasks)
         elif self.replace_teammates:
-            self.train_tasks = self.ally_train_teams
-            self.test_tasks = self.ally_test_teams
+            self.n_train_tasks = self.tasks_dict["n_train_tasks"]
+            self.n_test_tasks = self.tasks_dict["n_test_tasks"]
 
     def _turn_on_capability_flags(self):
         self.observe_attack_probs = (
@@ -576,6 +593,15 @@ class StarCraft2Env(MultiAgentEnv):
         )
         self.death_tracker_ally = np.zeros(self.n_agents)
         self.death_tracker_enemy = np.zeros(self.n_enemies)
+        if self.mask_enemies:
+            self.enemy_mask = self.rng.choice(
+                [0, 1],
+                size=self.enemy_mask.shape,
+                p=[
+                    self.enemy_mask_probability,
+                    1.0 - self.enemy_mask_probability,
+                ],
+            )
         self.previous_ally_units = None
         self.previous_enemy_units = None
         self.win_counted = False
@@ -640,8 +666,6 @@ class StarCraft2Env(MultiAgentEnv):
 
     def step(self, actions):
         """A single environment step. Returns reward, terminated, info."""
-        # TODO add loop over agents checking their health levels.
-        # If less than the threshold, then kill them.
         actions_int = [int(a) for a in actions]
 
         self.last_action = np.eye(self.n_actions)[np.array(actions_int)]
@@ -824,7 +848,10 @@ class StarCraft2Env(MultiAgentEnv):
         else:
             # attack/heal units that are in range
             target_id = action - self.n_actions_no_attack
-            if self.map_type in ["MMM", "terran_gen"] and unit.unit_type == self.medivac_id:
+            if (
+                self.map_type in ["MMM", "terran_gen"]
+                and unit.unit_type == self.medivac_id
+            ):
                 target_unit = self.agents[target_id]
                 action_name = "heal"
             else:
@@ -1084,7 +1111,7 @@ class StarCraft2Env(MultiAgentEnv):
         if unit.unit_type == 74 or unit.unit_type == self.stalker_id:
             return 80  # Protoss's Stalker
         elif unit.unit_type == 73 or unit.unit_type == self.zealot_id:
-            return 50  # Protoss's Zaelot
+            return 50  # Protoss's Zealot
         elif unit.unit_type == 4 or unit.unit_type == self.colossus_id:
             return 150  # Protoss's Colossus
         else:
@@ -1258,9 +1285,10 @@ class StarCraft2Env(MultiAgentEnv):
                     enemy_feats[e_id, 3] = (
                         e_y - y
                     ) / sight_range  # relative Y
-
+                    enemy_in_mask = self.enemy_mask[agent_id][e_id]
+                    show_enemy = self.mask_enemies and not enemy_in_mask
                     ind = 4
-                    if self.obs_all_health:
+                    if self.obs_all_health and show_enemy:
                         enemy_feats[e_id, ind] = (
                             e_unit.health / e_unit.health_max
                         )  # health
@@ -1272,7 +1300,7 @@ class StarCraft2Env(MultiAgentEnv):
                             )  # shield
                             ind += 1
 
-                    if self.unit_type_bits > 0:
+                    if self.unit_type_bits > 0 and show_enemy:
                         type_id = self.get_unit_type_id(e_unit, False)
                         enemy_feats[e_id, ind + type_id] = 1  # unit type
 
@@ -1423,15 +1451,11 @@ class StarCraft2Env(MultiAgentEnv):
         return cap_feats
 
     def get_capabilities(self):
-        """Returns all agent capabilities in a list.
-        """
+        """Returns all agent capabilities in a list."""
         agents_cap = [
-            self.get_capabilities_agent(i)
-            for i in range(self.n_agents)
+            self.get_capabilities_agent(i) for i in range(self.n_agents)
         ]
-        agents_cap = np.concatenate(agents_cap, axis=0).astype(
-            np.float32
-        )
+        agents_cap = np.concatenate(agents_cap, axis=0).astype(np.float32)
         return agents_cap
 
     def get_state(self):
@@ -1466,7 +1490,9 @@ class StarCraft2Env(MultiAgentEnv):
         return state
 
     def get_ally_num_attributes(self):
-        return len(self.ally_state_attr_names) + len(self.capability_attr_names)
+        return len(self.ally_state_attr_names) + len(
+            self.capability_attr_names
+        )
 
     def get_enemy_num_attributes(self):
         return len(self.enemy_state_attr_names)
@@ -1884,13 +1910,10 @@ class StarCraft2Env(MultiAgentEnv):
         old_unit_tags = [unit.tag for unit in self.agents.values()]
         old_unit_tags_enemy = [unit.tag for unit in self.enemies.values()]
 
-        if not self.distribution_function:
-            self.distribution_function = self.distribution_function_init(
-                None, # irrelavant
-                self.n_agents,
-                None, # irrelevant
-                **self.train_team_distribution_kwargs,
-            )
+        if not getattr(self, "train_distribution", None) or not getattr(
+            self, "test_distribution", None
+        ):
+
             self.train_distribution = self.distribution_function(
                 test_mode=False
             )
@@ -1902,16 +1925,14 @@ class StarCraft2Env(MultiAgentEnv):
         )
 
         # TODO hardcoding init location. change this later for new maps
-        ally_init_pos = sc_common.Point2D(
-            x=8, y=16
-        )
+        ally_init_pos = sc_common.Point2D(x=8, y=16)
         # Spawning location of enemy units
-        enemy_init_pos = sc_common.Point2D(
-            x=24, y=16
-        )
+        enemy_init_pos = sc_common.Point2D(x=24, y=16)
 
         for unit in team:
-            unit_type_ally = self._convert_unit_name_to_unit_type(unit, ally=True)
+            unit_type_ally = self._convert_unit_name_to_unit_type(
+                unit, ally=True
+            )
             debug_command = [
                 d_pb.DebugCommand(
                     create_unit=d_pb.DebugCreateUnit(
@@ -1924,7 +1945,9 @@ class StarCraft2Env(MultiAgentEnv):
             ]
             self._controller.debug(debug_command)
 
-            unit_type_enemy = self._convert_unit_name_to_unit_type(unit, ally=False)
+            unit_type_enemy = self._convert_unit_name_to_unit_type(
+                unit, ally=False
+            )
             debug_command = [
                 d_pb.DebugCommand(
                     create_unit=d_pb.DebugCreateUnit(
@@ -1997,8 +2020,12 @@ class StarCraft2Env(MultiAgentEnv):
                 )
                 self._init_ally_unit_types(min_unit_type)
 
-            all_agents_created = len(self.agents) == self.n_agents
-            all_enemies_created = len(self.enemies) == self.n_enemies
+            all_agents_created = (
+                recurse and len(self.agents) == self.map_n_agents
+            ) or (not recurse and len(self.agents) == self.n_agents)
+            all_enemies_created = (
+                recurse and len(self.enemies) == self.map_n_enemies
+            ) or (not recurse and len(self.enemies) == self.n_enemies)
 
             self._unit_types = [
                 unit.unit_type for unit in ally_units_sorted
@@ -2096,8 +2123,13 @@ class StarCraft2Env(MultiAgentEnv):
         if "10gen_" in self.map_name:
             if self.version.build_version == 75689:  # 4.10.0
                 self._min_unit_type = 1970
-            elif self.version.build_version == 82893:  # 5.0.5
+            elif (
+                self.version.build_version == 82893
+                or self.version.build_version == 83830
+            ):  # 5.0.5
                 self._min_unit_type = 2005
+            else:
+                raise Exception("Cannot verify version")
 
             self.baneling_id = self._min_unit_type
             self.colossus_id = self._min_unit_type + 1
@@ -2214,8 +2246,10 @@ class StarCraft2Env(MultiAgentEnv):
 
     def get_env_info(self):
         env_info = super().get_env_info()
-        env_info["agent_features"] = self.ally_state_attr_names + self.capability_attr_names
+        env_info["agent_features"] = (
+            self.ally_state_attr_names + self.capability_attr_names
+        )
         env_info["enemy_features"] = self.enemy_state_attr_names
-        env_info["n_train_tasks"] = len(self.train_tasks)
-        env_info["n_test_tasks"] = len(self.test_tasks)
+        env_info["n_train_tasks"] = self.n_train_tasks
+        env_info["n_test_tasks"] = self.n_test_tasks
         return env_info
