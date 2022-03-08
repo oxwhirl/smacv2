@@ -628,14 +628,7 @@ class StarCraft2Env(MultiAgentEnv):
                     60, "*"
                 )
             )
-        if self.replace_teammates:
-            return team_id
-        elif self.stochastic_attack:
-            return attack_prob_task_id
-        elif self.stochastic_health:
-            return health_levels_task_id
-        else:
-            return self.get_obs(), self.get_state()
+        return self.get_obs(), self.get_state()
 
     def _restart(self):
         """Restart the environment by killing all units on the map.
