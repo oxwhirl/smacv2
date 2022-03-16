@@ -3,15 +3,9 @@ from __future__ import division
 from __future__ import print_function
 
 from smac.env.multiagentenv import MultiAgentEnv
-from smac.env.starcraft2.other_distributions import (
-    get_distribution,
-    uniform_distribution,
-)
+
 from smac.env.starcraft2.maps import get_map_params
-from smac.env.starcraft2.team_distributions import (
-    all_teams_distribution_function,
-    get_distribution_function,
-)
+
 
 import atexit
 from warnings import warn
@@ -98,33 +92,13 @@ class StarCraft2Env(MultiAgentEnv):
         reward_negative_scale=0.5,
         reward_scale=True,
         reward_scale_rate=20,
-        replace_teammates=True,
-        stochastic_attack=False,
-        attack_probability_low=0.7,
-        attack_probability_high=1.0,
-        attack_fixed_train_distributions=None,
-        attack_fixed_test_distributions=None,
-        attack_distribution="stub",
-        stochastic_health=False,
-        health_low=0.0,
-        health_high=0.25,
-        health_fixed_train_distributions=None,
-        health_fixed_test_distributions=None,
-        health_distribution="stub",
         kill_unit_step_mul=2,
         fully_observable=False,
-        teammate_train_distribution="stub",
-        teammate_test_distribution="stub",
-        ally_train_teams=None,
-        ally_test_teams=None,
-        ally_unit_types=None,
-        n_units=None,
         show_capabilities=False,
         zero_pad_stochastic_attack=False,
         zero_pad_unit_types=False,
         zero_pad_health=False,
-        mask_enemies=False,
-        mask_probability=0.5,
+        capability_config={},
         replay_dir="",
         replay_prefix="",
         window_size_x=1920,
@@ -232,10 +206,8 @@ class StarCraft2Env(MultiAgentEnv):
         # Map arguments
         self.map_name = map_name
         map_params = get_map_params(self.map_name)
-        self.n_agents = n_units if n_units else map_params["n_agents"]
-        self.n_enemies = n_units if n_units else map_params["n_enemies"]
-        self.map_n_agents = map_params["n_agents"]
-        self.map_n_enemies = map_params["n_enemies"]
+        self.n_agents = map_params["n_agents"]
+        self.n_enemies = map_params["n_enemies"]
         self.episode_limit = map_params["limit"]
         self._move_amount = move_amount
         self._step_mul = step_mul
@@ -268,88 +240,16 @@ class StarCraft2Env(MultiAgentEnv):
         self.reward_scale_rate = reward_scale_rate
 
         # Meta MARL
-        self.replace_teammates = replace_teammates
-        self.teammate_train_distribution = teammate_train_distribution
-        self.distribution_function_init = get_distribution_function(
-            teammate_train_distribution
-        )
-        attack_kwargs = {
-            "attack_probability_low": attack_probability_low,
-            "attack_probability_high": attack_probability_high,
-            "train_distributions": attack_fixed_train_distributions,
-            "test_distributions": attack_fixed_test_distributions,
-        }
-        self.attack_distribution = get_distribution(attack_distribution)(
-            self.n_agents, **attack_kwargs
-        )
-        self.attack_train_distribution = None
-        self.attack_test_distribution = None
-        self.stochastic_attack = stochastic_attack
-        health_kwargs = {
-            "attack_probability_low": health_low,
-            "attack_probability_high": health_high,
-            "train_distributions": health_fixed_train_distributions,
-            "test_distributions": health_fixed_test_distributions,
-        }
-        self.health_distribution = get_distribution(health_distribution)(
-            self.n_agents, **health_kwargs
-        )
-        self.health_train_distribution = None
-        self.health_test_distribution = None
-        self.stochastic_health = stochastic_health
         self.fully_observable = fully_observable
         self.show_capabilities = show_capabilities
         self.zero_pad_stochastic_attack = zero_pad_stochastic_attack
         self.zero_pad_unit_types = zero_pad_unit_types
         self.zero_pad_health = zero_pad_health
-        self.train_team_distribution_kwargs = {
-            "ally_train_team_compositions": ally_train_teams,
-            "ally_test_team_compositions": ally_test_teams,
-            "ally_unit_types": ally_unit_types,
-        }
-        (
-            self.distribution_function,
-            self.tasks_dict,
-        ) = self.distribution_function_init(
-            self.n_agents,
-            **self.train_team_distribution_kwargs,
-        )
-        self.ally_train_teams = ally_train_teams
-        self.ally_test_teams = ally_test_teams
-        self.attack_train_tasks = attack_fixed_train_distributions
-        self.attack_test_tasks = attack_fixed_test_distributions
-        self.health_train_tasks = health_fixed_train_distributions
-        self.health_test_tasks = health_fixed_test_distributions
-        self.mask_enemies = mask_enemies
-        self.enemy_mask = np.zeros((self.n_agents, self.n_enemies))
-        self.enemy_mask_probability = mask_probability
-        self.rng = np.random.default_rng()
-        self._set_test_and_train_tasks()
-        assert self._only_one_meta_marl_flag_on()
-        assert (
-            not self.zero_pad_stochastic_attack or not self.show_capabilities
-        )
-        assert not self.zero_pad_unit_types or not self.show_capabilities
-        assert not self.zero_pad_health or not self.show_capabilities
-        self._turn_on_capability_flags()
-        assert self.stochastic_attack or (
-            not self.zero_pad_stochastic_attack
-            and not self.observe_attack_probs
-        )
-        assert self.stochastic_health or (
-            not self.zero_pad_health and not self.observe_teammate_health
-        )
-        assert self.replace_teammates or (
-            not self.zero_pad_unit_types and not self.observe_teammate_types
-        )
-        assert (
-            ally_train_teams is None
-            or teammate_train_distribution == "fixed_team"
-        )
-        assert (
-            ally_test_teams is None
-            or teammate_test_distribution == "fixed_team"
-        )
+        self.capability_config = capability_config
+        self.stochastic_attack = "attack" in self.capability_config
+        self.stochastic_health = "health" in self.capability_config
+        self.replace_teammates = "team_gen" in self.capability_config
+        self.mask_enemies = "enemy_mask" in self.capability_config
 
         # Other
         self.game_version = game_version
@@ -395,9 +295,10 @@ class StarCraft2Env(MultiAgentEnv):
             self.enemy_state_attr_names += ["shield"]
 
         self.capability_attr_names = []
-        if self.stochastic_attack:
+        # TODO work out how this is used
+        if "attack" in self.capability_config:
             self.capability_attr_names += ["attack_probability"]
-        if self.stochastic_health:
+        if "health" in self.capability_config:
             self.capability_attr_names += ["total_health"]
         if self.unit_type_bits > 0:
             bit_attr_names = [
@@ -451,17 +352,6 @@ class StarCraft2Env(MultiAgentEnv):
             return not self.stochastic_health and not self.replace_teammates
         else:
             return not self.replace_teammates or not self.stochastic_health
-
-    def _set_test_and_train_tasks(self):
-        if self.stochastic_attack:
-            self.n_train_tasks = len(self.attack_train_tasks)
-            self.n_test_tasks = len(self.attack_test_tasks)
-        elif self.stochastic_health:
-            self.n_train_tasks = len(self.health_train_tasks)
-            self.n_test_tasks = len(self.health_test_tasks)
-        elif self.replace_teammates:
-            self.n_train_tasks = self.tasks_dict["n_train_tasks"]
-            self.n_test_tasks = self.tasks_dict["n_test_tasks"]
 
     def _turn_on_capability_flags(self):
         self.observe_attack_probs = (
@@ -555,11 +445,12 @@ class StarCraft2Env(MultiAgentEnv):
             / 255
         )
 
-    def reset(self, test_mode=False):
+    def reset(self, episode_config={}):
         """Reset the environment. Required after each full episode.
         Returns initial observations and states.
         """
         self._episode_steps = 0
+        self.episode_config = episode_config
         if self._episode_count == 0:
             # Launch StarCraft II
             self._launch()
@@ -567,41 +458,19 @@ class StarCraft2Env(MultiAgentEnv):
             self._restart()
 
         # Information kept for counting the reward
-        if not self.attack_train_distribution:
-            self.attack_train_distribution = self.attack_distribution(
-                test_mode=False
-            )
-            self.attack_test_distribution = self.attack_distribution(
-                test_mode=True
-            )
-        if not self.health_train_distribution:
-            self.health_train_distribution = self.health_distribution(
-                test_mode=False
-            )
-            self.health_test_distribution = self.health_distribution(
-                test_mode=True
-            )
-        self.agent_attack_probabilities, attack_prob_task_id = (
-            next(self.attack_train_distribution)
-            if not test_mode
-            else next(self.attack_test_distribution)
+        self.agent_attack_probabilities = episode_config.get("attack", {}).get(
+            "item", None
         )
-        self.agent_health_levels, health_levels_task_id = (
-            next(self.health_train_distribution)
-            if not test_mode
-            else next(self.health_test_distribution)
+        self.agent_health_levels = episode_config.get("health", {}).get(
+            "item", None
         )
+        self.enemy_mask = episode_config.get("enemy_mask", {}).get(
+            "item", None
+        )
+        self.mask_enemies = self.enemy_mask is not None
+        team = episode_config.get("team_gen", {}).get("item", None)
         self.death_tracker_ally = np.zeros(self.n_agents)
         self.death_tracker_enemy = np.zeros(self.n_enemies)
-        if self.mask_enemies:
-            self.enemy_mask = self.rng.choice(
-                [0, 1],
-                size=self.enemy_mask.shape,
-                p=[
-                    self.enemy_mask_probability,
-                    1.0 - self.enemy_mask_probability,
-                ],
-            )
         self.previous_ally_units = None
         self.previous_enemy_units = None
         self.win_counted = False
@@ -618,7 +487,7 @@ class StarCraft2Env(MultiAgentEnv):
 
         try:
             self._obs = self._controller.observe()
-            team_id = self.init_units(test_mode=test_mode)
+            self.init_units(team)
         except (protocol.ProtocolError, protocol.ConnectionError):
             self.full_restart()
 
@@ -1642,12 +1511,7 @@ class StarCraft2Env(MultiAgentEnv):
 
     def get_obs_ally_capability_size(self):
         """Returns the size of capabilities observed by teammates."""
-        cap_feats = 0
-        if not self.replace_teammates or (
-            self.replace_teammates
-            and (self.observe_teammate_types or self.zero_pad_unit_types)
-        ):
-            cap_feats += self.unit_type_bits
+        cap_feats = self.unit_type_bits
         if self.stochastic_attack and (
             self.zero_pad_stochastic_attack or self.observe_attack_probs
         ):
@@ -1895,27 +1759,18 @@ class StarCraft2Env(MultiAgentEnv):
         ] + [unit.tag for unit in self.enemies.values() if unit.health > 0]
         self._kill_units(units_alive)
 
-    def _create_new_team(self, test_mode=False):
+    def _create_new_team(self, team):
         # unit_names = {
         #     self.id_to_unit_name_map[unit.unit_type]
         #     for unit in self.agents.values()
         # }
+        # It's important to set the number of agents and enemies
+        # because we use that to identify whether all the units have
+        # been created successfully
+        self.n_agents = len(team)
+        self.n_enemies = len(team)
         old_unit_tags = [unit.tag for unit in self.agents.values()]
         old_unit_tags_enemy = [unit.tag for unit in self.enemies.values()]
-
-        if not getattr(self, "train_distribution", None) or not getattr(
-            self, "test_distribution", None
-        ):
-
-            self.train_distribution = self.distribution_function(
-                test_mode=False
-            )
-            self.test_distribution = self.distribution_function(test_mode=True)
-        team, team_id = (
-            next(self.train_distribution)
-            if not test_mode
-            else next(self.test_distribution)
-        )
 
         # TODO hardcoding init location. change this later for new maps
         ally_init_pos = sc_common.Point2D(x=8, y=16)
@@ -1962,8 +1817,7 @@ class StarCraft2Env(MultiAgentEnv):
         except (protocol.ProtocolError, protocol.ConnectionError):
             self.full_restart()
             self.reset()
-        self.init_units(recurse=False)
-        return team_id
+        self.init_units(team, recurse=False)
 
     def _convert_unit_name_to_unit_type(self, unit_name, ally=True):
         if ally:
@@ -1971,7 +1825,7 @@ class StarCraft2Env(MultiAgentEnv):
         else:
             return self.enemy_unit_map[unit_name]
 
-    def init_units(self, recurse=True, test_mode=False):
+    def init_units(self, team, recurse=True):
         """Initialise the units."""
         while True:
             # Sometimes not all units have yet been created by SC2
@@ -2013,12 +1867,8 @@ class StarCraft2Env(MultiAgentEnv):
                 )
                 self._init_ally_unit_types(min_unit_type)
 
-            all_agents_created = (
-                recurse and len(self.agents) == self.map_n_agents
-            ) or (not recurse and len(self.agents) == self.n_agents)
-            all_enemies_created = (
-                recurse and len(self.enemies) == self.map_n_enemies
-            ) or (not recurse and len(self.enemies) == self.n_enemies)
+            all_agents_created = len(self.agents) == self.n_agents
+            all_enemies_created = len(self.enemies) == self.n_enemies
 
             self._unit_types = [
                 unit.unit_type for unit in ally_units_sorted
@@ -2029,9 +1879,8 @@ class StarCraft2Env(MultiAgentEnv):
             ]
 
             if all_agents_created and all_enemies_created:  # all good
-                if self.replace_teammates and recurse:
-                    team_id = self._create_new_team(test_mode=test_mode)
-                    return team_id
+                if recurse and team:
+                    self._create_new_team(team)
                 return
 
             try:
@@ -2243,6 +2092,4 @@ class StarCraft2Env(MultiAgentEnv):
             self.ally_state_attr_names + self.capability_attr_names
         )
         env_info["enemy_features"] = self.enemy_state_attr_names
-        env_info["n_train_tasks"] = self.n_train_tasks
-        env_info["n_test_tasks"] = self.n_test_tasks
         return env_info

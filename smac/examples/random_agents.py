@@ -4,7 +4,6 @@ from __future__ import print_function
 from os import replace
 
 from smac.env import StarCraft2Env
-from smac.env.starcraft2.team_distributions import DISTRIBUTIONS
 import numpy as np
 from absl import logging
 import time
@@ -27,14 +26,15 @@ ally_test_teams = [["stalker"] * 5 + ["zealot"] * 5]
 
 
 def main():
+
+    capability_config = {"enemy_mask", "team_gen"}
     env = StarCraft2Env(
-        map_name="10gen_zerg",
-        replace_teammates=True,
-        teammate_train_distribution="all",
-        teammate_test_distribution="all",
-        ally_unit_types=["baneling", "zergling", "hydralisk"],
-        n_units=6,
-        mask_enemies=True,
+        map_name="10gen_protoss", capability_config=capability_config
+    )
+    team = ["stalker", "zealot", "stalker", "zealot"]
+    enemy_mask = np.array(
+        [[0, 1, 0, 1], [1, 0, 0, 1], [1, 1, 1, 0], [1, 0, 0, 0]],
+        dtype=np.int64,
     )
     # env.reset()
 
@@ -48,7 +48,12 @@ def main():
 
     print("Training episodes")
     for e in range(n_episodes):
-        env.reset()
+        env.reset(
+            {
+                "team_gen": {"item": team, "id": 0},
+                "enemy_mask": {"item": enemy_mask, "id": 0},
+            }
+        )
         terminated = False
         episode_reward = 0
 
