@@ -28,9 +28,9 @@ ally_test_teams = [["stalker"] * 5 + ["zealot"] * 5]
 def main():
 
     capability_config = {
-        "enemy_mask": "",
-        "team_gen": {"observe": False, "n_units": 5},
-        "attack": {"observe": True},
+        # "enemy_mask": {},
+        # "team_gen": {"observe": True, "n_units": 5},
+        "health": {"observe": True},
     }
     env = StarCraft2Env(
         map_name="10gen_protoss",
@@ -48,7 +48,10 @@ def main():
         ],
         dtype=np.int64,
     )
-    attack_probs = np.array([0.8, 0.8, 0.6, 0.9, 0.99])
+    attack_probs = np.array(
+        [0.8, 0.8, 0.6, 0.9, 0.99, 0.25, 0.9, 0.122, 0.66, 0.98]
+    )
+    health_levels = attack_probs
     # env.reset()
 
     env_info = env.get_env_info()
@@ -63,9 +66,9 @@ def main():
     for e in range(n_episodes):
         env.reset(
             {
-                "team_gen": {"item": team, "id": 0},
-                "enemy_mask": {"item": enemy_mask, "id": 0},
-                "attack": {"item": attack_probs, "id": 0},
+                # "team_gen": {"item": team, "id": 0},
+                # "enemy_mask": {"item": enemy_mask, "id": 0},
+                "health": {"item": health_levels, "id": 0},
             }
         )
         terminated = False

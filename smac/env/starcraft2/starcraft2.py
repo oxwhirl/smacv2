@@ -1162,8 +1162,10 @@ class StarCraft2Env(MultiAgentEnv):
                     enemy_feats[e_id, 3] = (
                         e_y - y
                     ) / sight_range  # relative Y
-                    enemy_in_mask = self.enemy_mask[agent_id][e_id]
-                    show_enemy = self.mask_enemies and not enemy_in_mask
+                    show_enemy = (
+                        self.mask_enemies
+                        and not self.enemy_mask[agent_id][e_id]
+                    ) or not self.mask_enemies
                     ind = 4
                     if self.obs_all_health and show_enemy:
                         enemy_feats[e_id, ind] = (
@@ -1279,7 +1281,6 @@ class StarCraft2Env(MultiAgentEnv):
                 own_feats.flatten(),
             )
         )
-
         if self.obs_timestep_number:
             agent_obs = np.append(
                 agent_obs, self._episode_steps / self.episode_limit
