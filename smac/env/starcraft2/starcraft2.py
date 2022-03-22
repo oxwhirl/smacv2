@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
+from re import A
 
 from smac.env.multiagentenv import MultiAgentEnv
 
@@ -94,10 +95,6 @@ class StarCraft2Env(MultiAgentEnv):
         reward_scale_rate=20,
         kill_unit_step_mul=2,
         fully_observable=False,
-        show_capabilities=False,
-        zero_pad_stochastic_attack=False,
-        zero_pad_unit_types=False,
-        zero_pad_health=False,
         capability_config={},
         replay_dir="",
         replay_prefix="",
@@ -206,8 +203,9 @@ class StarCraft2Env(MultiAgentEnv):
         # Map arguments
         self.map_name = map_name
         map_params = get_map_params(self.map_name)
-        self.n_agents = map_params["n_agents"]
-        self.n_enemies = map_params["n_enemies"]
+        self.expected_n_agents = map_params["n_agents"]
+        self.expected_n_enemies = map_params["n_enemies"]
+        self.map_params = map_params
         self.episode_limit = map_params["limit"]
         self._move_amount = move_amount
         self._step_mul = step_mul
@@ -240,17 +238,43 @@ class StarCraft2Env(MultiAgentEnv):
         self.reward_scale_rate = reward_scale_rate
 
         # Meta MARL
-        self.fully_observable = fully_observable
-        self.show_capabilities = show_capabilities
-        self.zero_pad_stochastic_attack = zero_pad_stochastic_attack
-        self.zero_pad_unit_types = zero_pad_unit_types
-        self.zero_pad_health = zero_pad_health
         self.capability_config = capability_config
+        self.fully_observable = fully_observable
         self.stochastic_attack = "attack" in self.capability_config
         self.stochastic_health = "health" in self.capability_config
         self.replace_teammates = "team_gen" in self.capability_config
         self.mask_enemies = "enemy_mask" in self.capability_config
-
+        if self.stochastic_attack:
+            self.zero_pad_stochastic_attack = not self.capability_config[
+                "attack"
+            ]["observe"]
+            self.observe_attack_probs = self.capability_config["attack"][
+                "observe"
+            ]
+        if self.stochastic_health:
+            self.zero_pad_health = not self.capability_config["health"][
+                "observe"
+            ]
+            self.observe_teammate_health = self.capability_config["health"][
+                "observe"
+            ]
+        if self.replace_teammates:
+            self.zero_pad_unit_types = not self.capability_config["team_gen"][
+                "observe"
+            ]
+            self.observe_teammate_types = self.capability_config["team_gen"][
+                "observe"
+            ]
+        self.n_agents = (
+            map_params["n_agents"]
+            if not self.replace_teammates
+            else self.capability_config["team_gen"]["n_units"]
+        )
+        self.n_enemies = (
+            map_params["n_enemies"]
+            if not self.replace_teammates
+            else self.capability_config["team_gen"]["n_units"]
+        )
         # Other
         self.game_version = game_version
         self.continuing_episode = continuing_episode
@@ -352,17 +376,6 @@ class StarCraft2Env(MultiAgentEnv):
             return not self.stochastic_health and not self.replace_teammates
         else:
             return not self.replace_teammates or not self.stochastic_health
-
-    def _turn_on_capability_flags(self):
-        self.observe_attack_probs = (
-            self.show_capabilities and self.stochastic_attack
-        )
-        self.observe_teammate_types = (
-            self.show_capabilities and self.replace_teammates
-        )
-        self.observe_teammate_health = (
-            self.show_capabilities and self.stochastic_health
-        )
 
     def _launch(self):
         """Launch the StarCraft II game."""
@@ -487,6 +500,8 @@ class StarCraft2Env(MultiAgentEnv):
 
         try:
             self._obs = self._controller.observe()
+            self.expected_n_agents = self.map_params["n_agents"]
+            self.expected_n_enemies = self.map_params["n_enemies"]
             self.init_units(team)
         except (protocol.ProtocolError, protocol.ConnectionError):
             self.full_restart()
@@ -1205,14 +1220,14 @@ class StarCraft2Env(MultiAgentEnv):
                                 al_unit.shield / max_shield
                             )  # shield
                             ind += 1
-                    if self.observe_attack_probs and self.stochastic_attack:
+                    if self.stochastic_attack and self.observe_attack_probs:
                         ally_feats[i, ind] = self.agent_attack_probabilities[
                             al_id
                         ]
                         ind += 1
                     elif (
-                        self.zero_pad_stochastic_attack
-                        and self.stochastic_attack
+                        self.stochastic_attack
+                        and self.zero_pad_stochastic_attack
                     ):
                         ind += 1
 
@@ -1767,8 +1782,8 @@ class StarCraft2Env(MultiAgentEnv):
         # It's important to set the number of agents and enemies
         # because we use that to identify whether all the units have
         # been created successfully
-        self.n_agents = len(team)
-        self.n_enemies = len(team)
+        self.expected_n_agents = len(team)
+        self.expected_n_enemies = len(team)
         old_unit_tags = [unit.tag for unit in self.agents.values()]
         old_unit_tags_enemy = [unit.tag for unit in self.enemies.values()]
 
@@ -1867,8 +1882,8 @@ class StarCraft2Env(MultiAgentEnv):
                 )
                 self._init_ally_unit_types(min_unit_type)
 
-            all_agents_created = len(self.agents) == self.n_agents
-            all_enemies_created = len(self.enemies) == self.n_enemies
+            all_agents_created = len(self.agents) == self.expected_n_agents
+            all_enemies_created = len(self.enemies) == self.expected_n_enemies
 
             self._unit_types = [
                 unit.unit_type for unit in ally_units_sorted

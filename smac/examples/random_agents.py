@@ -27,15 +27,28 @@ ally_test_teams = [["stalker"] * 5 + ["zealot"] * 5]
 
 def main():
 
-    capability_config = {"enemy_mask", "team_gen"}
+    capability_config = {
+        "enemy_mask": "",
+        "team_gen": {"observe": False, "n_units": 5},
+        "attack": {"observe": True},
+    }
     env = StarCraft2Env(
-        map_name="10gen_protoss", capability_config=capability_config
+        map_name="10gen_protoss",
+        capability_config=capability_config,
+        debug=True,
     )
-    team = ["stalker", "zealot", "stalker", "zealot"]
+    team = ["stalker", "zealot", "stalker", "zealot", "zealot"]
     enemy_mask = np.array(
-        [[0, 1, 0, 1], [1, 0, 0, 1], [1, 1, 1, 0], [1, 0, 0, 0]],
+        [
+            [0, 1, 0, 1, 1],
+            [1, 0, 0, 1, 1],
+            [1, 1, 1, 0, 1],
+            [1, 0, 0, 0, 1],
+            [0, 0, 1, 1, 1],
+        ],
         dtype=np.int64,
     )
+    attack_probs = np.array([0.8, 0.8, 0.6, 0.9, 0.99])
     # env.reset()
 
     env_info = env.get_env_info()
@@ -52,6 +65,7 @@ def main():
             {
                 "team_gen": {"item": team, "id": 0},
                 "enemy_mask": {"item": enemy_mask, "id": 0},
+                "attack": {"item": attack_probs, "id": 0},
             }
         )
         terminated = False
@@ -75,33 +89,6 @@ def main():
             episode_reward += reward
 
         # print("Total reward in episode {} = {}".format(e, episode_reward))
-
-    print("Testing episodes")
-    for e in range(n_episodes):
-        env.reset(test_mode=True)
-        terminated = False
-        episode_reward = 0
-
-        while not terminated:
-            obs = env.get_obs()
-            state = env.get_state()
-            cap = env.get_capabilities()
-            # env.render()  # Uncomment for rendering
-
-            actions = []
-            for agent_id in range(n_agents):
-                avail_actions = env.get_avail_agent_actions(agent_id)
-                avail_actions_ind = np.nonzero(avail_actions)[0]
-                action = np.random.choice(avail_actions_ind)
-                actions.append(action)
-
-            reward, terminated, _ = env.step(actions)
-            time.sleep(0.15)
-            episode_reward += reward
-
-        # print("Total reward in episode {} = {}".format(e, episode_reward))
-
-    env.close()
 
 
 if __name__ == "__main__":
