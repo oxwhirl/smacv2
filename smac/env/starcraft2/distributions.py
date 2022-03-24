@@ -17,6 +17,17 @@ class Distribution(ABC):
         pass
 
 
+DISTRIBUTION_MAP = {}
+
+
+def get_distribution(key):
+    return DISTRIBUTION_MAP[key]
+
+
+def register_distribution(key, cls):
+    DISTRIBUTION_MAP[key] = cls
+
+
 class FixedDistribution(Distribution):
     """A generic disribution that draws from a fixed list.
     May operate in test mode, where items are drawn sequentially,
@@ -62,6 +73,9 @@ class FixedDistribution(Distribution):
         return len(self.teams)
 
 
+register_distribution("fixed", FixedDistribution)
+
+
 class AllTeamsDistribution(Distribution):
     def __init__(self, config):
         self.config = config
@@ -81,6 +95,9 @@ class AllTeamsDistribution(Distribution):
     @property
     def n_tasks(self):
         return len(self.combinations)
+
+
+register_distribution("all_teams", AllTeamsDistribution)
 
 
 class PerAgentUniformDistribution(Distribution):
@@ -107,6 +124,9 @@ class PerAgentUniformDistribution(Distribution):
         return inf
 
 
+register_distribution("per_agent_uniform", PerAgentUniformDistribution)
+
+
 class MaskDistribution(Distribution):
     def __init__(self, config):
         self.config = config
@@ -129,3 +149,6 @@ class MaskDistribution(Distribution):
     @property
     def n_tasks(self):
         return inf
+
+
+register_distribution("mask", MaskDistribution)

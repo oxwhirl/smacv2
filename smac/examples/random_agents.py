@@ -8,6 +8,8 @@ import numpy as np
 from absl import logging
 import time
 
+from smac.env.starcraft2.wrapper import StarCraftCapabilityEnvWrapper
+
 logging.set_verbosity(logging.DEBUG)
 
 
@@ -27,31 +29,39 @@ ally_test_teams = [["stalker"] * 5 + ["zealot"] * 5]
 
 def main():
 
-    capability_config = {
-        # "enemy_mask": {},
-        # "team_gen": {"observe": True, "n_units": 5},
-        "health": {"observe": True},
+    distribution_config = {
+        "team_gen": {
+            "dist_type": "all_teams",
+            "unit_types": ["stalker", "zealot"],
+            "n_units": 12,
+            "observe": True,
+        },
+        # "attack": {
+        #     "dist_type": "per_agent_uniform",
+        #     "lower_bound": 0.8,
+        #     "upper_bound": 1.0,
+        #     "n_units": 12,
+        #     "observe": True,
+        # },
+        "enemy_mask": {
+            "dist_type": "mask",
+            "mask_probability": 0.5,
+            "n_units": 12,
+            "n_enemies": 12,
+        },
+        # "health": {
+        #     "dist_type": "per_agent_uniform",
+        #     "lower_bound": 0.0,
+        #     "upper_bound": 0.2,
+        #     "n_units": 12,
+        #     "observe": True
+        # },
     }
-    env = StarCraft2Env(
+    env = StarCraftCapabilityEnvWrapper(
+        capability_config=distribution_config,
         map_name="10gen_protoss",
-        capability_config=capability_config,
         debug=True,
     )
-    team = ["stalker", "zealot", "stalker", "zealot", "zealot"]
-    enemy_mask = np.array(
-        [
-            [0, 1, 0, 1, 1],
-            [1, 0, 0, 1, 1],
-            [1, 1, 1, 0, 1],
-            [1, 0, 0, 0, 1],
-            [0, 0, 1, 1, 1],
-        ],
-        dtype=np.int64,
-    )
-    attack_probs = np.array(
-        [0.8, 0.8, 0.6, 0.9, 0.99, 0.25, 0.9, 0.122, 0.66, 0.98]
-    )
-    health_levels = attack_probs
     # env.reset()
 
     env_info = env.get_env_info()
@@ -64,13 +74,7 @@ def main():
 
     print("Training episodes")
     for e in range(n_episodes):
-        env.reset(
-            {
-                # "team_gen": {"item": team, "id": 0},
-                # "enemy_mask": {"item": enemy_mask, "id": 0},
-                "health": {"item": health_levels, "id": 0},
-            }
-        )
+        env.reset()
         terminated = False
         episode_reward = 0
 

@@ -502,7 +502,7 @@ class StarCraft2Env(MultiAgentEnv):
             self._obs = self._controller.observe()
             self.expected_n_agents = self.map_params["n_agents"]
             self.expected_n_enemies = self.map_params["n_enemies"]
-            self.init_units(team)
+            self.init_units(team, episode_config=episode_config)
         except (protocol.ProtocolError, protocol.ConnectionError):
             self.full_restart()
 
@@ -1281,6 +1281,7 @@ class StarCraft2Env(MultiAgentEnv):
                 own_feats.flatten(),
             )
         )
+
         if self.obs_timestep_number:
             agent_obs = np.append(
                 agent_obs, self._episode_steps / self.episode_limit
@@ -1775,7 +1776,7 @@ class StarCraft2Env(MultiAgentEnv):
         ] + [unit.tag for unit in self.enemies.values() if unit.health > 0]
         self._kill_units(units_alive)
 
-    def _create_new_team(self, team):
+    def _create_new_team(self, team, episode_config):
         # unit_names = {
         #     self.id_to_unit_name_map[unit.unit_type]
         #     for unit in self.agents.values()
@@ -1832,8 +1833,8 @@ class StarCraft2Env(MultiAgentEnv):
             self._obs = self._controller.observe()
         except (protocol.ProtocolError, protocol.ConnectionError):
             self.full_restart()
-            self.reset()
-        self.init_units(team, recurse=False)
+            self.reset(episode_config=episode_config)
+        self.init_units(team, episode_config=episode_config, recurse=False)
 
     def _convert_unit_name_to_unit_type(self, unit_name, ally=True):
         if ally:
@@ -1841,7 +1842,7 @@ class StarCraft2Env(MultiAgentEnv):
         else:
             return self.enemy_unit_map[unit_name]
 
-    def init_units(self, team, recurse=True):
+    def init_units(self, team, recurse=True, episode_config={}):
         """Initialise the units."""
         while True:
             # Sometimes not all units have yet been created by SC2
@@ -1896,7 +1897,7 @@ class StarCraft2Env(MultiAgentEnv):
 
             if all_agents_created and all_enemies_created:  # all good
                 if recurse and team:
-                    self._create_new_team(team)
+                    self._create_new_team(team, episode_config)
                 return
 
             try:
@@ -1904,7 +1905,7 @@ class StarCraft2Env(MultiAgentEnv):
                 self._obs = self._controller.observe()
             except (protocol.ProtocolError, protocol.ConnectionError):
                 self.full_restart()
-                self.reset()
+                self.reset(episode_config=episode_config)
 
     def get_unit_types(self):
         if self._unit_types is None:
