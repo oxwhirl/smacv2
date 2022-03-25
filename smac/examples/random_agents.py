@@ -4,10 +4,11 @@ from __future__ import print_function
 from os import replace
 
 from smac.env import StarCraft2Env
-from smac.env.starcraft2.team_distributions import DISTRIBUTIONS
 import numpy as np
 from absl import logging
 import time
+
+from smac.env.starcraft2.wrapper import StarCraftCapabilityEnvWrapper
 
 logging.set_verbosity(logging.DEBUG)
 
@@ -27,14 +28,39 @@ ally_test_teams = [["stalker"] * 5 + ["zealot"] * 5]
 
 
 def main():
-    env = StarCraft2Env(
-        map_name="10gen_zerg",
-        replace_teammates=True,
-        teammate_train_distribution="all",
-        teammate_test_distribution="all",
-        ally_unit_types=["baneling", "zergling", "hydralisk"],
-        n_units=6,
-        mask_enemies=True,
+
+    distribution_config = {
+        "team_gen": {
+            "dist_type": "all_teams",
+            "unit_types": ["stalker", "zealot"],
+            "n_units": 12,
+            "observe": True,
+        },
+        # "attack": {
+        #     "dist_type": "per_agent_uniform",
+        #     "lower_bound": 0.8,
+        #     "upper_bound": 1.0,
+        #     "n_units": 12,
+        #     "observe": True,
+        # },
+        "enemy_mask": {
+            "dist_type": "mask",
+            "mask_probability": 0.5,
+            "n_units": 12,
+            "n_enemies": 12,
+        },
+        # "health": {
+        #     "dist_type": "per_agent_uniform",
+        #     "lower_bound": 0.0,
+        #     "upper_bound": 0.2,
+        #     "n_units": 12,
+        #     "observe": True
+        # },
+    }
+    env = StarCraftCapabilityEnvWrapper(
+        capability_config=distribution_config,
+        map_name="10gen_protoss",
+        debug=True,
     )
     # env.reset()
 
@@ -70,33 +96,6 @@ def main():
             episode_reward += reward
 
         # print("Total reward in episode {} = {}".format(e, episode_reward))
-
-    print("Testing episodes")
-    for e in range(n_episodes):
-        env.reset(test_mode=True)
-        terminated = False
-        episode_reward = 0
-
-        while not terminated:
-            obs = env.get_obs()
-            state = env.get_state()
-            cap = env.get_capabilities()
-            # env.render()  # Uncomment for rendering
-
-            actions = []
-            for agent_id in range(n_agents):
-                avail_actions = env.get_avail_agent_actions(agent_id)
-                avail_actions_ind = np.nonzero(avail_actions)[0]
-                action = np.random.choice(avail_actions_ind)
-                actions.append(action)
-
-            reward, terminated, _ = env.step(actions)
-            time.sleep(0.15)
-            episode_reward += reward
-
-        # print("Total reward in episode {} = {}".format(e, episode_reward))
-
-    env.close()
 
 
 if __name__ == "__main__":
