@@ -30,10 +30,10 @@ ally_test_teams = [["stalker"] * 5 + ["zealot"] * 5]
 def main():
 
     distribution_config = {
+        "n_units": 12,
         "team_gen": {
             "dist_type": "all_teams",
             "unit_types": ["stalker", "zealot"],
-            "n_units": 12,
             "observe": True,
         },
         # "attack": {
@@ -46,7 +46,6 @@ def main():
         "enemy_mask": {
             "dist_type": "mask",
             "mask_probability": 0.5,
-            "n_units": 12,
             "n_enemies": 12,
         },
         # "health": {

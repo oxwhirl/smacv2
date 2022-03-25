@@ -5,18 +5,22 @@ from smac.env import MultiAgentEnv
 
 class StarCraftCapabilityEnvWrapper(MultiAgentEnv):
     def __init__(self, **kwargs):
-        self.env = StarCraft2Env(**kwargs)
         self.distribution_config = kwargs["capability_config"]
         self.env_key_to_distribution_map = {}
+        self._parse_distribution_config()
+        self.env = StarCraft2Env(**kwargs)
         assert (
             self.distribution_config.keys()
             == kwargs["capability_config"].keys()
         ), "Must give distribution config and capability config the same keys"
-        self._parse_distribution_config()
 
     def _parse_distribution_config(self):
         for env_key, config in self.distribution_config.items():
+            if env_key == "n_units":
+                continue
             config["env_key"] = env_key
+            # add n_units key
+            config["n_units"] = self.distribution_config["n_units"]
             distribution = get_distribution(config["dist_type"])(config)
             self.env_key_to_distribution_map[env_key] = distribution
 
