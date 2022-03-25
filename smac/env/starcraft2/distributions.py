@@ -81,19 +81,23 @@ class AllTeamsDistribution(Distribution):
         self.config = config
         self.units = config["unit_types"]
         self.n_units = config["n_units"]
-
+        self.exceptions = config.get("exception_unit_types", [])
         self.combinations = list(
             combinations_with_replacement(self.units, self.n_units)
         )
 
     def generate(self):
-        team = list(choice(self.combinations))
-        team_id = self.combinations.index(tuple(team))
-        shuffle(team)
+        team = []
+        while not team or all(member in self.exceptions for member in team):
+            team = list(choice(self.combinations))
+            team_id = self.combinations.index(tuple(team))
+            shuffle(team)
         return {"team_gen": {"item": team, "id": team_id}}
 
     @property
     def n_tasks(self):
+        # TODO adjust so that this can handle exceptions
+        assert not self.exceptions
         return len(self.combinations)
 
 
