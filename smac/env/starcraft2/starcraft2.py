@@ -1980,7 +1980,10 @@ class StarCraft2Env(MultiAgentEnv):
         self._min_unit_type = min_unit_type
 
         if "10gen_" in self.map_name:
-            if self.version.build_version == 75689:  # 4.10.0
+            if (
+                self.version.build_version == 75689
+                or self.version.build_version == 55958
+            ):  # 4.10.0
                 self._min_unit_type = 1970
             elif (
                 self.version.build_version == 82893
