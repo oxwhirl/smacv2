@@ -66,3 +66,6 @@ class StarCraftCapabilityEnvWrapper(MultiAgentEnv):
 
     def step(self, actions):
         return self.env.step(actions)
+
+    def get_stats(self):
+        return self.env.get_stats()
