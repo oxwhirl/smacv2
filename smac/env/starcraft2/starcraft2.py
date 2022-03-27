@@ -1988,7 +1988,9 @@ class StarCraft2Env(MultiAgentEnv):
             ):  # 5.0.5
                 self._min_unit_type = 2005
             else:
-                raise Exception("Cannot verify version")
+                raise Exception(
+                    f"Cannot verify version, was {self.version.build_version}"
+                )
 
             self.baneling_id = self._min_unit_type
             self.colossus_id = self._min_unit_type + 1
