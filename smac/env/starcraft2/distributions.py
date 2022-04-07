@@ -4,6 +4,7 @@ from itertools import combinations_with_replacement
 from random import choice, shuffle
 from math import inf
 from numpy.random import default_rng
+import numpy as np
 
 
 class Distribution(ABC):
@@ -119,7 +120,9 @@ class PerAgentUniformDistribution(Distribution):
 
     def generate(self):
         probs = self.rng.uniform(
-            low=self.lower_bound, high=self.upper_bound, size=(self.n_units,)
+            low=self.lower_bound,
+            high=self.upper_bound,
+            size=(self.n_units, len(self.lower_bound)),
         )
         return {self.env_key: {"item": probs, "id": 0}}
 

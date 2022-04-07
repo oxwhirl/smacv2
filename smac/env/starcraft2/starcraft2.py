@@ -279,6 +279,7 @@ class StarCraft2Env(MultiAgentEnv):
             if not self.replace_teammates
             else self.capability_config["team_gen"]["n_units"]
         )
+        self.random_start = "start_positions" in self.capability_config
         self.conic_fov = conic_fov
         self.n_fov_actions = num_fov_actions if self.conic_fov else 0
         self.conic_fov_angle = (2 * np.pi) / self.n_fov_actions if self.conic_fov else 0
@@ -370,6 +371,7 @@ class StarCraft2Env(MultiAgentEnv):
         self.previous_ally_units = None
         self.previous_enemy_units = None
         self.last_action = np.zeros((self.n_agents, self.n_actions))
+        self.init_positions = np.zeros((self.n_agents, 2))
         self._min_unit_type = 0
         self.marine_id = self.marauder_id = self.medivac_id = 0
         self.hydralisk_id = self.zergling_id = self.baneling_id = 0
@@ -433,10 +435,14 @@ class StarCraft2Env(MultiAgentEnv):
 
         game_info = self._controller.game_info()
         map_info = game_info.start_raw
-        map_play_area_min = map_info.playable_area.p0
-        map_play_area_max = map_info.playable_area.p1
-        self.max_distance_x = map_play_area_max.x - map_play_area_min.x
-        self.max_distance_y = map_play_area_max.y - map_play_area_min.y
+        self.map_play_area_min = map_info.playable_area.p0
+        self.map_play_area_max = map_info.playable_area.p1
+        self.max_distance_x = (
+            self.map_play_area_max.x - self.map_play_area_min.x
+        )
+        self.max_distance_y = (
+            self.map_play_area_max.y - self.map_play_area_min.y
+        )
         self.map_x = map_info.map_size.x
         self.map_y = map_info.map_size.y
 
@@ -499,6 +505,9 @@ class StarCraft2Env(MultiAgentEnv):
         self.enemy_mask = episode_config.get("enemy_mask", {}).get(
             "item", None
         )
+        self.unit_start_positions = episode_config.get(
+            "start_positions", {}
+        ).get("item", None)
         self.mask_enemies = self.enemy_mask is not None
         team = episode_config.get("team_gen", {}).get("item", None)
         self.death_tracker_ally = np.zeros(self.n_agents)
@@ -1926,11 +1935,30 @@ class StarCraft2Env(MultiAgentEnv):
         old_unit_tags_enemy = [unit.tag for unit in self.enemies.values()]
 
         # TODO hardcoding init location. change this later for new maps
-        ally_init_pos = sc_common.Point2D(x=8, y=16)
-        # Spawning location of enemy units
-        enemy_init_pos = sc_common.Point2D(x=24, y=16)
-
-        for unit in team:
+        if not self.random_start:
+            ally_init_pos = [
+                sc_common.Point2D(x=8, y=16)
+            ] * self.expected_n_agents
+            # Spawning location of enemy units
+            enemy_init_pos = [
+                sc_common.Point2D(x=24, y=16)
+            ] * self.expected_n_enemies
+        else:
+            ally_init_pos = [
+                sc_common.Point2D(
+                    x=self.unit_start_positions[i][0],
+                    y=self.unit_start_positions[i][1],
+                )
+                for i in range(self.unit_start_positions.shape[0])
+            ]
+            enemy_init_pos = [
+                sc_common.Point2D(
+                    x=(self.map_x - self.unit_start_positions[i][0]),
+                    y=self.unit_start_positions[i][1],
+                )
+                for i in range(self.unit_start_positions.shape[0])
+            ]
+        for unit_id, unit in enumerate(team):
             unit_type_ally = self._convert_unit_name_to_unit_type(
                 unit, ally=True
             )
@@ -1939,7 +1967,7 @@ class StarCraft2Env(MultiAgentEnv):
                     create_unit=d_pb.DebugCreateUnit(
                         unit_type=unit_type_ally,
                         owner=1,
-                        pos=ally_init_pos,
+                        pos=ally_init_pos[unit_id],
                         quantity=1,
                     )
                 )
@@ -1954,7 +1982,7 @@ class StarCraft2Env(MultiAgentEnv):
                     create_unit=d_pb.DebugCreateUnit(
                         unit_type=unit_type_enemy,
                         owner=2,
-                        pos=enemy_init_pos,
+                        pos=enemy_init_pos[unit_id],
                         quantity=1,
                     )
                 )
