@@ -1187,10 +1187,7 @@ class StarCraft2Env(MultiAgentEnv):
         x = self.fov_directions[agent_id][0]
         x = max(x, EPS) if x_diff > 0 else min(x, -EPS)
         fov_angle = np.arctan(self.fov_directions[agent_id][1] / x)
-        ret = np.abs(obj_angle - fov_angle) < self.conic_fov_angle / 2
-        if ret:
-            print("We can see someone!")
-        return ret
+        return np.abs(obj_angle - fov_angle) < self.conic_fov_angle / 2
 
     def get_obs_agent(self, agent_id, fully_observable=False):
         """Returns observation for agent_id. The observation is composed of:
