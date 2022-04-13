@@ -505,8 +505,11 @@ class StarCraft2Env(MultiAgentEnv):
         self.enemy_mask = episode_config.get("enemy_mask", {}).get(
             "item", None
         )
-        self.unit_start_positions = episode_config.get(
-            "start_positions", {}
+        self.ally_start_positions = episode_config.get(
+            "ally_start_positions", {}
+        ).get("item", None)
+        self.enemy_start_positions = episode_config.get(
+            "enemy_start_positions", {}
         ).get("item", None)
         self.mask_enemies = self.enemy_mask is not None
         team = episode_config.get("team_gen", {}).get("item", None)
@@ -1946,17 +1949,17 @@ class StarCraft2Env(MultiAgentEnv):
         else:
             ally_init_pos = [
                 sc_common.Point2D(
-                    x=self.unit_start_positions[i][0],
-                    y=self.unit_start_positions[i][1],
+                    x=self.ally_start_positions[i][0],
+                    y=self.ally_start_positions[i][1],
                 )
-                for i in range(self.unit_start_positions.shape[0])
+                for i in range(self.ally_start_positions.shape[0])
             ]
             enemy_init_pos = [
                 sc_common.Point2D(
-                    x=(self.map_x - self.unit_start_positions[i][0]),
-                    y=self.unit_start_positions[i][1],
+                    x=self.enemy_start_positions[i][0],
+                    y=self.enemy_start_positions[i][1],
                 )
-                for i in range(self.unit_start_positions.shape[0])
+                for i in range(self.ally_start_positions.shape[0])
             ]
         for unit_id, unit in enumerate(team):
             unit_type_ally = self._convert_unit_name_to_unit_type(

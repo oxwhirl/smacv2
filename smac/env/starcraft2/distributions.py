@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod, abstractproperty
+from copy import deepcopy
 from typing import Any, Dict
 from itertools import combinations_with_replacement
 from random import choice, shuffle
@@ -52,7 +53,7 @@ class FixedDistribution(Distribution):
         self.teams = config["items"]
         self.index = 0
 
-    def generate(self):
+    def generate(self) -> Dict[str, Dict[str, Any]]:
         """Returns:
         Dict: Returns a dict of the form
         {self.env_key: {"item": <item>, "id": <item_index>}}
@@ -87,7 +88,7 @@ class AllTeamsDistribution(Distribution):
             combinations_with_replacement(self.units, self.n_units)
         )
 
-    def generate(self):
+    def generate(self) -> Dict[str, Dict[str, Any]]:
         team = []
         while not team or all(member in self.exceptions for member in team):
             team = list(choice(self.combinations))
@@ -118,7 +119,7 @@ class PerAgentUniformDistribution(Distribution):
         self.n_units = config["n_units"]
         self.rng = default_rng()
 
-    def generate(self):
+    def generate(self) -> Dict[str, Dict[str, Any]]:
         probs = self.rng.uniform(
             low=self.lower_bound,
             high=self.upper_bound,
@@ -135,14 +136,14 @@ register_distribution("per_agent_uniform", PerAgentUniformDistribution)
 
 
 class MaskDistribution(Distribution):
-    def __init__(self, config):
+    def __init__(self, config: Dict[str, Any]):
         self.config = config
         self.mask_probability = config["mask_probability"]
         self.n_units = config["n_units"]
         self.n_enemies = config["n_enemies"]
         self.rng = default_rng()
 
-    def generate(self):
+    def generate(self) -> Dict[str, Dict[str, Any]]:
         mask = self.rng.choice(
             [0, 1],
             size=(self.n_units, self.n_enemies),
@@ -159,3 +160,98 @@ class MaskDistribution(Distribution):
 
 
 register_distribution("mask", MaskDistribution)
+
+
+class ReflectPositionDistribution(Distribution):
+    """Distribution that will generate enemy and ally
+    positions. Generates ally positions uniformly at
+    random and then reflects these in a vertical line
+    half-way across the map to get the enemy positions.
+    Only works when the number of agents and enemies is the same.
+    """
+
+    def __init__(self, config):
+        self.config = config
+        self.n_units = config["n_units"]
+        self.map_x = config["map_x"]
+        self.map_y = config["map_y"]
+        config_copy = deepcopy(config)
+        config_copy["env_key"] = "ally_start_positions"
+        config_copy["lower_bound"] = (0, 0)
+        config_copy["upper_bound"] = (self.map_x / 2, self.map_y)
+        self.pos_generator = PerAgentUniformDistribution(config_copy)
+
+    def generate(self) -> Dict[str, Dict[str, Any]]:
+        ally_positions_dict = self.pos_generator.generate()
+        ally_positions = ally_positions_dict["ally_start_positions"]["item"]
+        enemy_positions = np.zeros_like(ally_positions)
+        enemy_positions[:, 0] = self.map_x - ally_positions[:, 0]
+        enemy_positions[:, 1] = ally_positions[:, 1]
+        return {
+            "ally_start_positions": {"item": ally_positions, "id": 0},
+            "enemy_start_positions": {"item": enemy_positions, "id": 0},
+        }
+
+    @property
+    def n_tasks(self) -> int:
+        return inf
+
+
+register_distribution("reflect_position", ReflectPositionDistribution)
+
+
+class SurroundedPositionDistribution(Distribution):
+    """Distribution that generates ally positions in a
+    circle at the centre of the map, and then has enemies
+    randomly distributed in the four diagonal directions at a
+    random distance.
+    """
+
+    def __init__(self, config):
+        self.config = config
+        self.n_units = config["n_units"]
+        self.n_enemies = config["n_enemies"]
+        self.map_x = config["map_x"]
+        self.map_y = config["map_y"]
+        self.rng = default_rng()
+
+    def generate(self) -> Dict[str, Dict[str, Any]]:
+        centre_point = np.array([self.map_x / 2, self.map_y / 2])
+        ally_position = np.tile(centre_point, (self.n_units, 1))
+        enemy_position = np.zeros((self.n_enemies, 2))
+        # decide on the number of groups (between 1 and 4)
+        n_groups = self.rng.integers(1, 5)
+        # generate the number of enemies in each group
+        group_membership = self.rng.multinomial(
+            self.n_enemies, np.ones(n_groups) / n_groups
+        )
+        # decide on the distance along the diagonal for each group
+        group_position = self.rng.uniform(size=(n_groups,))
+        group_diagonals = self.rng.choice(
+            np.array(range(4)), size=(n_groups,), replace=False
+        )
+
+        diagonal_to_point_map = {
+            0: np.array([0, 0]),
+            1: np.array([0, self.map_y]),
+            2: np.array([self.map_x, self.map_y]),
+            3: np.array([self.map_x, 0]),
+        }
+        unit_index = 0
+        for i in range(n_groups):
+            t = group_position[i]
+            enemy_position[
+                unit_index : unit_index + group_membership[i], :
+            ] = centre_point * t + diagonal_to_point_map[
+                group_diagonals[i]
+            ] * (
+                1 - t
+            )
+
+        return {
+            "ally_start_positions": {"item": ally_position, "id": 0},
+            "enemy_start_positions": {"item": enemy_position, "id": 0},
+        }
+
+
+register_distribution("surrounded", SurroundedPositionDistribution)

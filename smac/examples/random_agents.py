@@ -48,6 +48,7 @@ def main():
             "mask_probability": 0.5,
             "n_enemies": 12,
         },
+        "start_positions": {}
         # "health": {
         #     "dist_type": "per_agent_uniform",
         #     "lower_bound": 0.0,
