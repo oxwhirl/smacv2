@@ -281,7 +281,7 @@ class StarCraft2Env(MultiAgentEnv):
         )
         self.conic_fov = conic_fov
         self.n_fov_actions = num_fov_actions if self.conic_fov else 0
-        self.conic_fov_angle = (2 * np.pi) / self.n_fov_actions
+        self.conic_fov_angle = (2 * np.pi) / self.n_fov_actions if self.conic_fov else 0
         # Other
         self.game_version = game_version
         self.continuing_episode = continuing_episode
@@ -1173,12 +1173,18 @@ class StarCraft2Env(MultiAgentEnv):
         ]
         return lines
 
-    def is_position_in_cone(self, agent_id, pos):
+    def is_position_in_cone(self, agent_id, pos, range="sight_range"):
         ally_pos = self.get_unit_by_id(agent_id).pos
         distance = self.distance(ally_pos.x, ally_pos.y, pos.x, pos.y)
         # position is in this agent's cone if it is not outside the sight
         # range and has the correct angle
-        if distance > self.unit_sight_range(agent_id):
+        if range == "sight_range":
+            unit_range = self.unit_sight_range(agent_id)
+        elif range == "shoot_range":
+            unit_range = self.unit_shoot_range(agent_id)
+        else:
+            raise Exception("Range argument not recognised")
+        if distance > unit_range:
             return False
         x_diff = pos.x - ally_pos.x
         x_diff = max(x_diff, EPS) if x_diff > 0 else min(x_diff, -EPS)
@@ -1847,7 +1853,14 @@ class StarCraft2Env(MultiAgentEnv):
                     dist = self.distance(
                         unit.pos.x, unit.pos.y, t_unit.pos.x, t_unit.pos.y
                     )
-                    if dist <= shoot_range:
+                    can_shoot = (
+                        dist <= shoot_range
+                        if not self.conic_fov
+                        else self.is_position_in_cone(
+                            agent_id, t_unit.pos, range="shoot_range"
+                        )
+                    )
+                    if can_shoot:
                         avail_actions[t_id + self.n_actions_no_attack] = 1
 
             return avail_actions
