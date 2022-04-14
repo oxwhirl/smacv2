@@ -253,5 +253,9 @@ class SurroundedPositionDistribution(Distribution):
             "enemy_start_positions": {"item": enemy_position, "id": 0},
         }
 
+    @property
+    def n_tasks(self):
+        return inf
+
 
 register_distribution("surrounded", SurroundedPositionDistribution)
