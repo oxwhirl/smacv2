@@ -1,7 +1,6 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-from re import A
 
 from smac.env.multiagentenv import MultiAgentEnv
 
@@ -62,6 +61,9 @@ class Direction(enum.IntEnum):
     WEST = 3
 
 
+EPS = 1e-7
+
+
 class StarCraft2Env(MultiAgentEnv):
     """The StarCraft II environment for decentralised multi-agent
     micromanagement scenarios.
@@ -83,6 +85,8 @@ class StarCraft2Env(MultiAgentEnv):
         obs_terrain_height=False,
         obs_instead_of_state=False,
         obs_timestep_number=False,
+        conic_fov=False,
+        num_fov_actions=12,
         state_last_action=True,
         state_timestep_number=False,
         reward_sparse=False,
@@ -275,6 +279,9 @@ class StarCraft2Env(MultiAgentEnv):
             if not self.replace_teammates
             else self.capability_config["team_gen"]["n_units"]
         )
+        self.conic_fov = conic_fov
+        self.n_fov_actions = num_fov_actions if self.conic_fov else 0
+        self.conic_fov_angle = (2 * np.pi) / self.n_fov_actions if self.conic_fov else 0
         # Other
         self.game_version = game_version
         self.continuing_episode = continuing_episode
@@ -287,8 +294,9 @@ class StarCraft2Env(MultiAgentEnv):
         self.replay_prefix = replay_prefix
 
         # Actions
-        self.n_actions_no_attack = 6
         self.n_actions_move = 4
+
+        self.n_actions_no_attack = self.n_actions_move + self.n_fov_actions + 2
         self.n_actions = self.n_actions_no_attack + self.n_enemies
 
         # Map info
@@ -319,7 +327,6 @@ class StarCraft2Env(MultiAgentEnv):
             self.enemy_state_attr_names += ["shield"]
 
         self.capability_attr_names = []
-        # TODO work out how this is used
         if "attack" in self.capability_config:
             self.capability_attr_names += ["attack_probability"]
         if "health" in self.capability_config:
@@ -348,6 +355,18 @@ class StarCraft2Env(MultiAgentEnv):
         self.agent_health_levels = np.zeros(self.n_agents)
         self.death_tracker_ally = np.zeros(self.n_agents)
         self.death_tracker_enemy = np.zeros(self.n_enemies)
+        self.fov_directions = np.zeros((self.n_agents, 2))
+        self.fov_directions[:, 0] = 1.0
+        self.canonical_fov_directions = np.array(
+            [
+                (
+                    np.cos(2 * np.pi * (i / self.n_fov_actions)),
+                    np.sin(2 * np.pi * (i / self.n_fov_actions)),
+                )
+                for i in range(self.n_fov_actions)
+            ]
+        )
+        self.new_unit_positions = np.zeros((self.n_agents, 2))
         self.previous_ally_units = None
         self.previous_enemy_units = None
         self.last_action = np.zeros((self.n_agents, self.n_actions))
@@ -484,6 +503,8 @@ class StarCraft2Env(MultiAgentEnv):
         team = episode_config.get("team_gen", {}).get("item", None)
         self.death_tracker_ally = np.zeros(self.n_agents)
         self.death_tracker_enemy = np.zeros(self.n_enemies)
+        self.fov_directions = np.zeros((self.n_agents, 2))
+        self.fov_directions[:, 0] = 1.0
         self.previous_ally_units = None
         self.previous_enemy_units = None
         self.win_counted = False
@@ -562,9 +583,11 @@ class StarCraft2Env(MultiAgentEnv):
                 actions[a_id] = action_num
             if sc_action:
                 sc_actions.append(sc_action)
-
         # Send action request
         req_actions = sc_pb.RequestAction(actions=sc_actions)
+
+        if self.conic_fov:
+            self.render_fovs()
         try:
             self._controller.actions(req_actions)
             # Make step in SC2, i.e. apply actions
@@ -581,6 +604,7 @@ class StarCraft2Env(MultiAgentEnv):
         except (protocol.ProtocolError, protocol.ConnectionError):
             self.full_restart()
             return 0, True, {}
+
         self._total_steps += 1
         self._episode_steps += 1
 
@@ -681,6 +705,9 @@ class StarCraft2Env(MultiAgentEnv):
                 unit_tags=[tag],
                 queue_command=False,
             )
+            self.new_unit_positions[a_id] = np.array(
+                [x, y + self._move_amount]
+            )
             if self.debug:
                 logging.debug("Agent {}: Move North".format(a_id))
 
@@ -693,6 +720,9 @@ class StarCraft2Env(MultiAgentEnv):
                 ),
                 unit_tags=[tag],
                 queue_command=False,
+            )
+            self.new_unit_positions[a_id] = np.array(
+                [x, y - self._move_amount]
             )
             if self.debug:
                 logging.debug("Agent {}: Move South".format(a_id))
@@ -707,6 +737,10 @@ class StarCraft2Env(MultiAgentEnv):
                 unit_tags=[tag],
                 queue_command=False,
             )
+            self.new_unit_positions[a_id] = np.array(
+                [x + self._move_amount, y]
+            )
+
             if self.debug:
                 logging.debug("Agent {}: Move East".format(a_id))
 
@@ -720,8 +754,16 @@ class StarCraft2Env(MultiAgentEnv):
                 unit_tags=[tag],
                 queue_command=False,
             )
+            self.new_unit_positions[a_id] = np.array(
+                [x - self._move_amount, y]
+            )
             if self.debug:
                 logging.debug("Agent {}: Move West".format(a_id))
+        elif self.conic_fov and action in range(6, 6 + self.n_fov_actions):
+            self.fov_directions[a_id] = self.canonical_fov_directions[
+                action - 6
+            ]
+            cmd = None
         else:
             # attack/heal units that are in range
             target_id = action - self.n_actions_no_attack
@@ -759,9 +801,12 @@ class StarCraft2Env(MultiAgentEnv):
                         a_id, action_name, target_id
                     )
                 )
-
-        sc_action = sc_pb.Action(action_raw=r_pb.ActionRaw(unit_command=cmd))
-        return sc_action
+        if cmd:
+            sc_action = sc_pb.Action(
+                action_raw=r_pb.ActionRaw(unit_command=cmd)
+            )
+            return sc_action
+        return None
 
     def get_agent_action_heuristic(self, a_id, action):
         unit = self.get_unit_by_id(a_id)
@@ -1078,6 +1123,77 @@ class StarCraft2Env(MultiAgentEnv):
             proportional_health - health_level
         )
 
+    def render_fovs(self):
+        lines_to_render = []
+        for agent_id in range(self.n_agents):
+            if not self.death_tracker_ally[agent_id]:
+                lines_to_render.extend(self.agent_cone(agent_id))
+        debug_command = d_pb.DebugCommand(
+            draw=d_pb.DebugDraw(lines=lines_to_render)
+        )
+        self._controller.debug(debug_command)
+
+    def agent_cone(self, agent_id):
+        fov_direction = self.fov_directions[agent_id]
+        c, s = np.cos(self.conic_fov_angle / 2), np.sin(
+            self.conic_fov_angle / 2
+        )
+        sight_range = self.unit_sight_range(agent_id)
+        rot = np.array([[c, -s], [s, c]])
+        neg_rot = np.array([[c, s], [-s, c]])
+        start_pos = self.new_unit_positions[agent_id]
+        init_pos = sc_common.Point(
+            x=start_pos[0],
+            y=start_pos[1],
+            z=self.get_unit_by_id(agent_id).pos.z,
+        )
+        upper_cone_end = start_pos + (rot @ fov_direction) * sight_range
+        lower_cone_end = start_pos + (neg_rot @ fov_direction) * sight_range
+        lines = [
+            d_pb.DebugLine(
+                line=d_pb.Line(
+                    p0=init_pos,
+                    p1=sc_common.Point(
+                        x=upper_cone_end[0],
+                        y=upper_cone_end[1],
+                        z=init_pos.z,
+                    ),
+                )
+            ),
+            d_pb.DebugLine(
+                line=d_pb.Line(
+                    p0=init_pos,
+                    p1=sc_common.Point(
+                        x=lower_cone_end[0],
+                        y=lower_cone_end[1],
+                        z=init_pos.z,
+                    ),
+                )
+            ),
+        ]
+        return lines
+
+    def is_position_in_cone(self, agent_id, pos, range="sight_range"):
+        ally_pos = self.get_unit_by_id(agent_id).pos
+        distance = self.distance(ally_pos.x, ally_pos.y, pos.x, pos.y)
+        # position is in this agent's cone if it is not outside the sight
+        # range and has the correct angle
+        if range == "sight_range":
+            unit_range = self.unit_sight_range(agent_id)
+        elif range == "shoot_range":
+            unit_range = self.unit_shoot_range(agent_id)
+        else:
+            raise Exception("Range argument not recognised")
+        if distance > unit_range:
+            return False
+        x_diff = pos.x - ally_pos.x
+        x_diff = max(x_diff, EPS) if x_diff > 0 else min(x_diff, -EPS)
+        obj_angle = np.arctan((pos.y - ally_pos.y) / x_diff)
+        x = self.fov_directions[agent_id][0]
+        x = max(x, EPS) if x_diff > 0 else min(x, -EPS)
+        fov_angle = np.arctan(self.fov_directions[agent_id][1] / x)
+        return np.abs(obj_angle - fov_angle) < self.conic_fov_angle / 2
+
     def get_obs_agent(self, agent_id, fully_observable=False):
         """Returns observation for agent_id. The observation is composed of:
 
@@ -1147,8 +1263,12 @@ class StarCraft2Env(MultiAgentEnv):
                 e_x = e_unit.pos.x
                 e_y = e_unit.pos.y
                 dist = self.distance(x, y, e_x, e_y)
-
-                if (dist < sight_range and e_unit.health > 0) or (
+                enemy_visible = (
+                    self.is_position_in_cone(agent_id, e_unit.pos)
+                    if self.conic_fov
+                    else dist < sight_range
+                )
+                if (enemy_visible and e_unit.health > 0) or (
                     e_unit.health > 0 and fully_observable
                 ):  # visible and alive
                     # Sight range > shoot range
@@ -1193,8 +1313,12 @@ class StarCraft2Env(MultiAgentEnv):
                 al_x = al_unit.pos.x
                 al_y = al_unit.pos.y
                 dist = self.distance(x, y, al_x, al_y)
-
-                if (dist < sight_range and al_unit.health > 0) or (
+                ally_visible = (
+                    self.is_position_in_cone(agent_id, al_unit.pos)
+                    if self.conic_fov
+                    else dist < sight_range
+                )
+                if (ally_visible and al_unit.health > 0) or (
                     al_unit.health > 0 and fully_observable
                 ):  # visible and alive
                     ally_feats[i, 0] = 1  # visible
@@ -1707,6 +1831,11 @@ class StarCraft2Env(MultiAgentEnv):
             if self.can_move(unit, Direction.WEST):
                 avail_actions[5] = 1
 
+            if self.conic_fov:
+                avail_actions[6 : 6 + self.n_fov_actions] = [
+                    1
+                ] * self.n_fov_actions
+
             # Can attack only alive units that are alive in the shooting range
             shoot_range = self.unit_shoot_range(agent_id)
 
@@ -1718,13 +1847,20 @@ class StarCraft2Env(MultiAgentEnv):
                     for (t_id, t_unit) in self.agents.items()
                     if t_unit.unit_type != self.medivac_id
                 ]
-
+            # should we only be able to target people in the cone?
             for t_id, t_unit in target_items:
                 if t_unit.health > 0:
                     dist = self.distance(
                         unit.pos.x, unit.pos.y, t_unit.pos.x, t_unit.pos.y
                     )
-                    if dist <= shoot_range:
+                    can_shoot = (
+                        dist <= shoot_range
+                        if not self.conic_fov
+                        else self.is_position_in_cone(
+                            agent_id, t_unit.pos, range="shoot_range"
+                        )
+                    )
+                    if can_shoot:
                         avail_actions[t_id + self.n_actions_no_attack] = 1
 
             return avail_actions
