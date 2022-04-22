@@ -207,8 +207,6 @@ class StarCraft2Env(MultiAgentEnv):
         # Map arguments
         self.map_name = map_name
         map_params = get_map_params(self.map_name)
-        self.expected_n_agents = map_params["n_agents"]
-        self.expected_n_enemies = map_params["n_enemies"]
         self.map_params = map_params
         self.episode_limit = map_params["limit"]
         self._move_amount = move_amount
@@ -282,7 +280,9 @@ class StarCraft2Env(MultiAgentEnv):
         self.random_start = "start_positions" in self.capability_config
         self.conic_fov = conic_fov
         self.n_fov_actions = num_fov_actions if self.conic_fov else 0
-        self.conic_fov_angle = (2 * np.pi) / self.n_fov_actions if self.conic_fov else 0
+        self.conic_fov_angle = (
+            (2 * np.pi) / self.n_fov_actions if self.conic_fov else 0
+        )
         # Other
         self.game_version = game_version
         self.continuing_episode = continuing_episode
@@ -305,6 +305,12 @@ class StarCraft2Env(MultiAgentEnv):
         self._bot_race = map_params["b_race"]
         self.shield_bits_ally = 1 if self._agent_race == "P" else 0
         self.shield_bits_enemy = 1 if self._bot_race == "P" else 0
+        # NOTE: The map_type, which is used to initialise the unit
+        # type ids, the unit_type_bits and the races, are still properties of the
+        # map. This means even the 10gen_{race} maps are limited to the
+        # unit types statically defined in the unit type id assignment.
+        # Lifting this restriction shouldn't be too much work, I've just
+        # not done it.
         self.unit_type_bits = map_params["unit_type_bits"]
         self.map_type = map_params["map_type"]
         self._unit_types = None
@@ -533,8 +539,6 @@ class StarCraft2Env(MultiAgentEnv):
 
         try:
             self._obs = self._controller.observe()
-            self.expected_n_agents = self.map_params["n_agents"]
-            self.expected_n_enemies = self.map_params["n_enemies"]
             self.init_units(team, episode_config=episode_config)
         except (protocol.ProtocolError, protocol.ConnectionError):
             self.full_restart()
@@ -1254,7 +1258,8 @@ class StarCraft2Env(MultiAgentEnv):
             y = unit.pos.y
             sight_range = self.unit_sight_range(agent_id)
 
-            # Movement features
+            # Movement features. Do not need similar for looking
+            # around because this is always possible
             avail_actions = self.get_avail_agent_actions(agent_id)
             for m in range(self.n_actions_move):
                 move_feats[m] = avail_actions[m + 2]
@@ -1932,20 +1937,12 @@ class StarCraft2Env(MultiAgentEnv):
         # It's important to set the number of agents and enemies
         # because we use that to identify whether all the units have
         # been created successfully
-        self.expected_n_agents = len(team)
-        self.expected_n_enemies = len(team)
-        old_unit_tags = [unit.tag for unit in self.agents.values()]
-        old_unit_tags_enemy = [unit.tag for unit in self.enemies.values()]
 
         # TODO hardcoding init location. change this later for new maps
         if not self.random_start:
-            ally_init_pos = [
-                sc_common.Point2D(x=8, y=16)
-            ] * self.expected_n_agents
+            ally_init_pos = [sc_common.Point2D(x=8, y=16)] * self.n_agents
             # Spawning location of enemy units
-            enemy_init_pos = [
-                sc_common.Point2D(x=24, y=16)
-            ] * self.expected_n_enemies
+            enemy_init_pos = [sc_common.Point2D(x=24, y=16)] * self.n_enemies
         else:
             ally_init_pos = [
                 sc_common.Point2D(
@@ -1992,16 +1989,12 @@ class StarCraft2Env(MultiAgentEnv):
             ]
             self._controller.debug(debug_command)
 
-        self._kill_units(old_unit_tags)
-        self._kill_units(old_unit_tags_enemy)
-
         try:
             self._controller.step(4)
             self._obs = self._controller.observe()
         except (protocol.ProtocolError, protocol.ConnectionError):
             self.full_restart()
             self.reset(episode_config=episode_config)
-        self.init_units(team, episode_config=episode_config, recurse=False)
 
     def _convert_unit_name_to_unit_type(self, unit_name, ally=True):
         if ally:
@@ -2009,8 +2002,13 @@ class StarCraft2Env(MultiAgentEnv):
         else:
             return self.enemy_unit_map[unit_name]
 
-    def init_units(self, team, recurse=True, episode_config={}):
+    def init_units(self, team, episode_config={}):
         """Initialise the units."""
+        if team:
+            # can use any value for min unit type because
+            # it is hardcoded based on the version
+            self._init_ally_unit_types(0)
+            self._create_new_team(team, episode_config)
         while True:
             # Sometimes not all units have yet been created by SC2
             self.agents = {}
@@ -2045,14 +2043,14 @@ class StarCraft2Env(MultiAgentEnv):
                     if self._episode_count == 0:
                         self.max_reward += unit.health_max + unit.shield_max
 
-            if self._episode_count == 0 and recurse:
+            if self._episode_count == 0:
                 min_unit_type = min(
                     unit.unit_type for unit in self.agents.values()
                 )
                 self._init_ally_unit_types(min_unit_type)
 
-            all_agents_created = len(self.agents) == self.expected_n_agents
-            all_enemies_created = len(self.enemies) == self.expected_n_enemies
+            all_agents_created = len(self.agents) == self.n_agents
+            all_enemies_created = len(self.enemies) == self.n_enemies
 
             self._unit_types = [
                 unit.unit_type for unit in ally_units_sorted
@@ -2062,9 +2060,8 @@ class StarCraft2Env(MultiAgentEnv):
                 if unit.owner == 2
             ]
 
+            # TODO move this to the start
             if all_agents_created and all_enemies_created:  # all good
-                if recurse and team:
-                    self._create_new_team(team, episode_config)
                 return
 
             try:
@@ -2155,6 +2152,7 @@ class StarCraft2Env(MultiAgentEnv):
             elif (
                 self.version.build_version == 82893
                 or self.version.build_version == 83830
+                or self.version.build_version == 87702
             ):  # 5.0.5
                 self._min_unit_type = 2005
             else:
