@@ -13,24 +13,10 @@ from smac.env.starcraft2.wrapper import StarCraftCapabilityEnvWrapper
 logging.set_verbosity(logging.DEBUG)
 
 
-# ally_train_teams = [
-#     ["marine"] * 6 + ["marauder"] * 4,
-#     ["marine"] * 10,
-# ]
-# ally_test_teams = [
-#     ["marine"] * 4 + ["marauder"] * 3 + ["medivac"] * 3
-# ]
-
-# ally_train_teams = [["hydralisk"] * 10]
-# ally_test_teams = [["zergling"] * 10]
-ally_train_teams = [["stalker"] * 10, ["zealot"] * 10]
-ally_test_teams = [["stalker"] * 5 + ["zealot"] * 5]
-
-
 def main():
 
     distribution_config = {
-        "n_units": 12,
+        "n_units": 4,
         "team_gen": {
             "dist_type": "all_teams",
             "unit_types": ["stalker", "zealot"],
@@ -43,11 +29,17 @@ def main():
         #     "n_units": 12,
         #     "observe": True,
         # },
-        "enemy_mask": {
-            "dist_type": "mask",
-            "mask_probability": 0.5,
-            "n_enemies": 12,
-        },
+        # "enemy_mask": {
+        #     "dist_type": "mask",
+        #     "mask_probability": 0.5,
+        #     "n_enemies": 12,
+        # },
+        "start_positions": {
+            "dist_type": "reflect_position",
+            "n_enemies": 4,
+            "map_x": 32,
+            "map_y": 32,
+        }
         # "health": {
         #     "dist_type": "per_agent_uniform",
         #     "lower_bound": 0.0,
@@ -60,6 +52,7 @@ def main():
         capability_config=distribution_config,
         map_name="10gen_protoss",
         debug=True,
+        conic_fov=True,
     )
     # env.reset()
 
