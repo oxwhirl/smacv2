@@ -259,3 +259,27 @@ class SurroundedPositionDistribution(Distribution):
 
 
 register_distribution("surrounded", SurroundedPositionDistribution)
+
+# If this becomes common, then should work on a more satisfying way
+# of doing this
+class SurroundedAndReflectPositionDistribution(Distribution):
+    def __init__(self, config):
+        self.p_threshold = config["p"]
+        self.surrounded_distribution = SurroundedPositionDistribution(config)
+        self.reflect_distribution = ReflectPositionDistribution(config)
+        self.rng = default_rng()
+
+    def generate(self) -> Dict[str, Dict[str, Any]]:
+        p = self.rng.random()
+        if p > self.p_threshold:
+            return self.surrounded_distribution.generate()
+        else:
+            return self.reflect_distribution.generate()
+
+    @property
+    def n_tasks(self):
+        return inf
+
+register_distribution(
+    "surrounded_and_reflect", SurroundedAndReflectPositionDistribution
+)
