@@ -602,9 +602,10 @@ class StarCraft2Env(MultiAgentEnv):
         # Send action request
         req_actions = sc_pb.RequestAction(actions=sc_actions)
 
-        if self.conic_fov:
-            self.render_fovs()
         try:
+
+            if self.conic_fov:
+                self.render_fovs()
             self._controller.actions(req_actions)
             # Make step in SC2, i.e. apply actions
             if not self.stochastic_health:
