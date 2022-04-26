@@ -1956,7 +1956,7 @@ class StarCraft2Env(MultiAgentEnv):
                     x=self.enemy_start_positions[i][0],
                     y=self.enemy_start_positions[i][1],
                 )
-                for i in range(self.ally_start_positions.shape[0])
+                for i in range(self.enemy_start_positions.shape[0])
             ]
         for unit_id, unit in enumerate(team):
             unit_type_ally = self._convert_unit_name_to_unit_type(
