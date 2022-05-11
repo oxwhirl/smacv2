@@ -69,3 +69,6 @@ class StarCraftCapabilityEnvWrapper(MultiAgentEnv):
 
     def get_stats(self):
         return self.env.get_stats()
+
+    def full_restart(self):
+        return self.env.full_restart()

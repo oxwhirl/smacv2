@@ -17,7 +17,7 @@ map_param_registry = {
     "10gen_terran": {
         "n_agents": 10,
         "n_enemies": 10,
-        "limit": 120,
+        "limit": 400,
         "a_race": "T",
         "b_race": "T",
         "unit_type_bits": 3,
@@ -27,7 +27,7 @@ map_param_registry = {
     "10gen_zerg": {
         "n_agents": 10,
         "n_enemies": 10,
-        "limit": 120,
+        "limit": 400,
         "a_race": "Z",
         "b_race": "Z",
         "unit_type_bits": 3,
@@ -37,7 +37,7 @@ map_param_registry = {
     "10gen_protoss": {
         "n_agents": 10,
         "n_enemies": 10,
-        "limit": 120,
+        "limit": 400,
         "a_race": "P",
         "b_race": "P",
         "unit_type_bits": 3,

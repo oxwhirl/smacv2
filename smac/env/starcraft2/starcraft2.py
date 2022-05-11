@@ -558,7 +558,6 @@ class StarCraft2Env(MultiAgentEnv):
         """
         try:
             self._kill_all_units()
-            self._controller.step(2)
         except (protocol.ProtocolError, protocol.ConnectionError):
             self.full_restart()
 
@@ -1924,11 +1923,15 @@ class StarCraft2Env(MultiAgentEnv):
         self._controller.debug(debug_command)
 
     def _kill_all_units(self):
-        """Kill all units on the map."""
-        units_alive = [
-            unit.tag for unit in self.agents.values() if unit.health > 0
-        ] + [unit.tag for unit in self.enemies.values() if unit.health > 0]
-        self._kill_units(units_alive)
+        """Kill all units on the map. Steps controller and so can throw
+        exceptions"""
+        units = [unit.tag for unit in self._obs.observation.raw_data.units]
+        self._kill_units(units)
+        # check the units are dead
+        units = len(self._obs.observation.raw_data.units)
+        while len(self._obs.observation.raw_data.units) > 0:
+            self._controller.step(2)
+            self._obs = self._controller.observe()
 
     def _create_new_team(self, team, episode_config):
         # unit_names = {
