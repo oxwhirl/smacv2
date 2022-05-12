@@ -178,7 +178,10 @@ class ReflectPositionDistribution(Distribution):
         config_copy = deepcopy(config)
         config_copy["env_key"] = "ally_start_positions"
         config_copy["lower_bound"] = (0, 0)
-        config_copy["upper_bound"] = (self.map_x / 2, self.map_y)
+        # subtract one from the x coordinate because SC2 goes wrong
+        # when you spawn ally and enemy units on top of one another
+        # -1 gives a sensible 'buffer zone' of size 2
+        config_copy["upper_bound"] = (self.map_x / 2 - 1, self.map_y)
         self.pos_generator = PerAgentUniformDistribution(config_copy)
 
     def generate(self) -> Dict[str, Dict[str, Any]]:
@@ -216,7 +219,17 @@ class SurroundedPositionDistribution(Distribution):
         self.rng = default_rng()
 
     def generate(self) -> Dict[str, Dict[str, Any]]:
+        # need multiple centre points because SC2 does not cope with
+        # spawning ally and enemy units on top of one another in some
+        # cases
+        offset = 2
         centre_point = np.array([self.map_x / 2, self.map_y / 2])
+        diagonal_to_centre_point = {
+            0: np.array([self.map_x / 2 - offset, self.map_y / 2 - offset]),
+            1: np.array([self.map_x / 2 - offset, self.map_y / 2 + offset]),
+            2: np.array([self.map_x / 2 + offset, self.map_y / 2 + offset]),
+            3: np.array([self.map_x / 2 + offset, self.map_y / 2 - offset]),
+        }
         ally_position = np.tile(centre_point, (self.n_units, 1))
         enemy_position = np.zeros((self.n_enemies, 2))
         # decide on the number of groups (between 1 and 4)
@@ -242,7 +255,9 @@ class SurroundedPositionDistribution(Distribution):
             t = group_position[i]
             enemy_position[
                 unit_index : unit_index + group_membership[i], :
-            ] = centre_point * t + diagonal_to_point_map[
+            ] = diagonal_to_centre_point[
+                group_diagonals[i]
+            ] * t + diagonal_to_point_map[
                 group_diagonals[i]
             ] * (
                 1 - t
@@ -279,6 +294,7 @@ class SurroundedAndReflectPositionDistribution(Distribution):
     @property
     def n_tasks(self):
         return inf
+
 
 register_distribution(
     "surrounded_and_reflect", SurroundedAndReflectPositionDistribution
