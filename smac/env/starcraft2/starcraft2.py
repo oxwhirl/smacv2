@@ -1994,7 +1994,7 @@ class StarCraft2Env(MultiAgentEnv):
             self._controller.debug(debug_command)
 
         try:
-            self._controller.step(4)
+            self._controller.step(1)
             self._obs = self._controller.observe()
         except (protocol.ProtocolError, protocol.ConnectionError):
             self.full_restart()
@@ -2047,7 +2047,7 @@ class StarCraft2Env(MultiAgentEnv):
                     if self._episode_count == 0:
                         self.max_reward += unit.health_max + unit.shield_max
 
-            if self._episode_count == 0:
+            if self._episode_count == 0 and not team:
                 min_unit_type = min(
                     unit.unit_type for unit in self.agents.values()
                 )
@@ -2148,21 +2148,10 @@ class StarCraft2Env(MultiAgentEnv):
         self._min_unit_type = min_unit_type
 
         if "10gen_" in self.map_name:
-            if (
-                self.version.build_version == 75689
-                or self.version.build_version == 55958
-            ):  # 4.10.0
-                self._min_unit_type = 1970
-            elif (
-                self.version.build_version == 82893
-                or self.version.build_version == 83830
-                or self.version.build_version == 87702
-            ):  # 5.0.5
-                self._min_unit_type = 2005
-            else:
-                raise Exception(
-                    f"Cannot verify version, was {self.version.build_version}"
-                )
+            num_rl_units = 9
+            self._min_unit_type = (
+                len(self._controller.data().units) - num_rl_units
+            )
 
             self.baneling_id = self._min_unit_type
             self.colossus_id = self._min_unit_type + 1
