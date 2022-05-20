@@ -73,5 +73,8 @@ class StarCraftCapabilityEnvWrapper(MultiAgentEnv):
     def full_restart(self):
         return self.env.full_restart()
 
+    def save_replay(self):
+        self.env.save_replay()
+
     def close(self):
         return self.env.close()
