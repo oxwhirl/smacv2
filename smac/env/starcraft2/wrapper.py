@@ -31,6 +31,12 @@ class StarCraftCapabilityEnvWrapper(MultiAgentEnv):
 
         return self.env.reset(reset_config)
 
+    def __getattr__(self, name):
+        if hasattr(self.env, name):
+            return getattr(self.env, name)
+        else:
+            raise AttributeError
+
     def get_obs(self):
         return self.env.get_obs()
 
