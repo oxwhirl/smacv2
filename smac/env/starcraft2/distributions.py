@@ -112,19 +112,19 @@ class WeightedTeamsDistribution(Distribution):
         self.units = np.array(config["unit_types"])
         self.n_units = config["n_units"]
         self.weights = np.array(config["weights"])
+        self.exceptions = config.get("exception_unit_types", set())
         self.rng = default_rng()
 
     def generate(self) -> Dict[str, Dict[str, Any]]:
-        return {
-            "team_gen": {
-                "item": list(
-                    self.rng.choice(
-                        self.units, size=(self.n_units,), p=self.weights
-                    )
-                ),
-                "id": 0,
-            }
-        }
+        team = []
+        while not team or all(member in self.exceptions for member in team):
+            team = list(
+                self.rng.choice(
+                    self.units, size=(self.n_units,), p=self.weights
+                )
+            )
+            shuffle(team)
+        return {"team_gen": {"item": team, "id": 0}}
 
     @property
     def n_tasks(self):
