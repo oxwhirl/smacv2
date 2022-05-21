@@ -85,6 +85,7 @@ class StarCraft2Env(MultiAgentEnv):
         obs_terrain_height=False,
         obs_instead_of_state=False,
         obs_timestep_number=False,
+        obs_own_pos=False,
         conic_fov=False,
         num_fov_actions=12,
         state_last_action=True,
@@ -245,6 +246,7 @@ class StarCraft2Env(MultiAgentEnv):
         self.stochastic_attack = "attack" in self.capability_config
         self.stochastic_health = "health" in self.capability_config
         self.replace_teammates = "team_gen" in self.capability_config
+        self.obs_own_pos = obs_own_pos
         self.mask_enemies = "enemy_mask" in self.capability_config
         if self.stochastic_attack:
             self.zero_pad_stochastic_attack = not self.capability_config[
@@ -332,6 +334,8 @@ class StarCraft2Env(MultiAgentEnv):
             self.ally_state_attr_names += ["shield"]
         if self.shield_bits_enemy > 0:
             self.enemy_state_attr_names += ["shield"]
+        if self.conic_fov:
+            self.ally_state_attr_names += ["fov_x", "fov_y"]
 
         self.capability_attr_names = []
         if "attack" in self.capability_config:
@@ -1410,6 +1414,13 @@ class StarCraft2Env(MultiAgentEnv):
             if self.stochastic_health:
                 own_feats[ind] = self.agent_health_levels[agent_id]
                 ind += 1
+            if self.obs_own_pos:
+                own_feats[ind] = x / self.map_x
+                own_feats[ind + 1] = y / self.map_y
+                ind += 2
+            if self.conic_fov:
+                own_feats[ind : ind + 2] = self.fov_directions[agent_id]
+                ind += 2
             if self.unit_type_bits > 0:
                 type_id = self.get_unit_type_id(unit, True)
                 own_feats[ind + type_id] = 1
@@ -1480,7 +1491,7 @@ class StarCraft2Env(MultiAgentEnv):
 
     def get_state(self):
         """Returns the global state.
-        NOTE: This functon should not be used during decentralised execution.
+        NOTE: This function should not be used during decentralised execution.
         """
         if self.obs_instead_of_state:
             obs_concat = np.concatenate(self.get_obs(), axis=0).astype(
@@ -1581,6 +1592,10 @@ class StarCraft2Env(MultiAgentEnv):
                 if self.stochastic_health:
                     ally_state[al_id, ind] = self.agent_health_levels[al_id]
                     ind += 1
+                if self.conic_fov:
+                    ally_state[al_id, ind : ind + 2] = self.fov_directions[
+                        al_id
+                    ]
                 if self.unit_type_bits > 0:
                     type_id = self.get_unit_type_id(al_unit, True)
                     ally_state[al_id, type_id - self.unit_type_bits] = 1
@@ -1652,7 +1667,10 @@ class StarCraft2Env(MultiAgentEnv):
             own_feats += 1 + self.shield_bits_ally
         if self.obs_timestep_number:
             own_feats += 1
-
+        if self.conic_fov:
+            own_feats += 2
+        if self.obs_own_pos:
+            own_feats += 2
         return own_feats
 
     def get_obs_move_feats_size(self):
@@ -2229,7 +2247,7 @@ class StarCraft2Env(MultiAgentEnv):
 
     def only_medivac_left(self, ally):
         """Check if only Medivac units are left."""
-        if self.map_type != "MMM" or self.map_type != "terran_gen":
+        if self.map_type != "MMM" and self.map_type != "terran_gen":
             return False
 
         if ally:
@@ -2245,9 +2263,9 @@ class StarCraft2Env(MultiAgentEnv):
             units_alive = [
                 a
                 for a in self.enemies.values()
-                if (a.health > 0 and a.unit_type != self.medivac_id)
+                if (a.health > 0 and a.unit_type != Terran.Medivac)
             ]
-            if len(units_alive) == 1 and units_alive[0].unit_type == 54:
+            if len(units_alive) == 0:
                 return True
             return False
 

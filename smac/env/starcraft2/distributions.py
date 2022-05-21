@@ -106,6 +106,34 @@ class AllTeamsDistribution(Distribution):
 register_distribution("all_teams", AllTeamsDistribution)
 
 
+class WeightedTeamsDistribution(Distribution):
+    def __init__(self, config):
+        self.config = config
+        self.units = np.array(config["unit_types"])
+        self.n_units = config["n_units"]
+        self.weights = np.array(config["weights"])
+        self.rng = default_rng()
+
+    def generate(self) -> Dict[str, Dict[str, Any]]:
+        return {
+            "team_gen": {
+                "item": list(
+                    self.rng.choice(
+                        self.units, size=(self.n_units,), p=self.weights
+                    )
+                ),
+                "id": 0,
+            }
+        }
+
+    @property
+    def n_tasks(self):
+        return inf
+
+
+register_distribution("weighted_teams", WeightedTeamsDistribution)
+
+
 class PerAgentUniformDistribution(Distribution):
     """A generic distribution for generating some information per-agent drawn
     from a uniform distribution in a specified range.
