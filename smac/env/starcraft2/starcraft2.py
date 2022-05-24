@@ -86,6 +86,7 @@ class StarCraft2Env(MultiAgentEnv):
         obs_instead_of_state=False,
         obs_timestep_number=False,
         obs_own_pos=False,
+        obs_starcraft=True,
         conic_fov=False,
         num_fov_actions=12,
         state_last_action=True,
@@ -223,6 +224,7 @@ class StarCraft2Env(MultiAgentEnv):
         self.obs_pathing_grid = obs_pathing_grid
         self.obs_terrain_height = obs_terrain_height
         self.obs_timestep_number = obs_timestep_number
+        self.obs_starcraft = obs_starcraft
         self.state_last_action = state_last_action
         self.state_timestep_number = state_timestep_number
         if self.obs_all_health:
@@ -1257,7 +1259,9 @@ class StarCraft2Env(MultiAgentEnv):
         ally_feats = np.zeros(ally_feats_dim, dtype=np.float32)
         own_feats = np.zeros(own_feats_dim, dtype=np.float32)
 
-        if unit.health > 0:  # otherwise dead, return all zeros
+        if (
+            unit.health > 0 and self.obs_starcraft
+        ):  # otherwise dead, return all zeros
             x = unit.pos.x
             y = unit.pos.y
             sight_range = self.unit_sight_range(agent_id)
@@ -1424,20 +1428,24 @@ class StarCraft2Env(MultiAgentEnv):
             if self.unit_type_bits > 0:
                 type_id = self.get_unit_type_id(unit, True)
                 own_feats[ind + type_id] = 1
-
-        agent_obs = np.concatenate(
-            (
-                move_feats.flatten(),
-                enemy_feats.flatten(),
-                ally_feats.flatten(),
-                own_feats.flatten(),
+        if self.obs_starcraft:
+            agent_obs = np.concatenate(
+                (
+                    move_feats.flatten(),
+                    enemy_feats.flatten(),
+                    ally_feats.flatten(),
+                    own_feats.flatten(),
+                )
             )
-        )
 
         if self.obs_timestep_number:
-            agent_obs = np.append(
-                agent_obs, self._episode_steps / self.episode_limit
-            )
+            if self.obs_starcraft:
+                agent_obs = np.append(
+                    agent_obs, self._episode_steps / self.episode_limit
+                )
+            else:
+                agent_obs = np.zeros(1, dtype=np.float32)
+                agent_obs[:] = self._episode_steps / self.episode_limit
 
         if self.debug:
             logging.debug("Obs Agent: {}".format(agent_id).center(60, "-"))
@@ -1663,13 +1671,11 @@ class StarCraft2Env(MultiAgentEnv):
         Returns the size of the vector containing the agents' own features.
         """
         own_feats = self.get_cap_size()
-        if self.obs_own_health:
+        if self.obs_own_health and self.obs_starcraft:
             own_feats += 1 + self.shield_bits_ally
-        if self.obs_timestep_number:
-            own_feats += 1
-        if self.conic_fov:
+        if self.conic_fov and self.obs_starcraft:
             own_feats += 2
-        if self.obs_own_pos:
+        if self.obs_own_pos and self.obs_starcraft:
             own_feats += 2
         return own_feats
 
@@ -1721,8 +1727,16 @@ class StarCraft2Env(MultiAgentEnv):
 
         enemy_feats = n_enemies * n_enemy_feats
         ally_feats = n_allies * n_ally_feats
-
-        return move_feats + enemy_feats + ally_feats + own_feats
+        if self.obs_starcraft:
+            return (
+                self.obs_timestep_number
+                + move_feats
+                + enemy_feats
+                + ally_feats
+                + own_feats
+            )
+        else:
+            return 1 if self.obs_timestep_number else 0
 
     def get_state_size(self):
         """Returns the size of the global state."""
