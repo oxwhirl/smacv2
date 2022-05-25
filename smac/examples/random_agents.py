@@ -53,6 +53,7 @@ def main():
         map_name="10gen_protoss",
         debug=True,
         conic_fov=True,
+        obs_own_pos=True
     )
     # env.reset()
 
@@ -72,7 +73,9 @@ def main():
 
         while not terminated:
             obs = env.get_obs()
+            obs_features = env.obs_feature_names
             state = env.get_state()
+            state_features = env.state_feature_names
             cap = env.get_capabilities()
             # env.render()  # Uncomment for rendering
 
@@ -88,7 +91,8 @@ def main():
             episode_reward += reward
 
         # print("Total reward in episode {} = {}".format(e, episode_reward))
-
+        assert len(state) == len(state_features)
+        assert len(obs[0]) == len(obs_features)
 
 if __name__ == "__main__":
     main()
