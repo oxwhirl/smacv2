@@ -1117,6 +1117,9 @@ class StarCraft2Env(MultiAgentEnv):
 
         return feature_names
 
+    def get_state_feature_names(self):
+        return self.state_feature_names
+
     def build_obs_feature_names(self):
         """Return the observations feature names."""
         feature_names = []
@@ -1210,6 +1213,9 @@ class StarCraft2Env(MultiAgentEnv):
             feature_names.append("timestep")
 
         return feature_names
+
+    def get_obs_feature_names(self):
+        return self.obs_feature_names
 
     def can_move(self, unit, direction):
         """Whether a unit can move in a given direction."""
