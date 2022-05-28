@@ -70,12 +70,12 @@ def main():
         env.reset()
         terminated = False
         episode_reward = 0
+        state_features = env.get_state_feature_names()
+        obs_features = env.get_obs_feature_names()
 
         while not terminated:
             obs = env.get_obs()
-            obs_features = env.obs_feature_names
             state = env.get_state()
-            state_features = env.state_feature_names
             cap = env.get_capabilities()
             # env.render()  # Uncomment for rendering
 
