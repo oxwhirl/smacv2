@@ -103,9 +103,6 @@ This works for any replay as long as the map can be found by the game.
 
 For more information, please refer to [PySC2](https://github.com/deepmind/pysc2) documentation.
 
-# Documentation 
-
-For the detailed description of the environment, read the [SMACv2 documentation](docs/smac.md). 
 
 # Code Examples
 
