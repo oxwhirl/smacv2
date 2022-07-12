@@ -1072,45 +1072,47 @@ class StarCraft2Env(MultiAgentEnv):
 
         # Ally features.
         for al_id in range(self.n_agents):
-            feature_names.append(f'ally_health_{al_id}')
-            feature_names.append(f'ally_cooldown_{al_id}')
-            feature_names.append(f'ally_relative_x_{al_id}')
-            feature_names.append(f'ally_relative_y_{al_id}')
+            feature_names.append(f"ally_health_{al_id}")
+            feature_names.append(f"ally_cooldown_{al_id}")
+            feature_names.append(f"ally_relative_x_{al_id}")
+            feature_names.append(f"ally_relative_y_{al_id}")
 
             if self.shield_bits_ally > 0:
-                feature_names.append(f'ally_shield_{al_id}')
+                feature_names.append(f"ally_shield_{al_id}")
 
             if self.stochastic_attack:
-                feature_names.append(f'ally_attack_prob_{al_id}')
+                feature_names.append(f"ally_attack_prob_{al_id}")
 
             if self.stochastic_health:
-                feature_names.append(f'ally_health_level_{al_id}')
+                feature_names.append(f"ally_health_level_{al_id}")
 
             if self.conic_fov:
-                feature_names.append(f'ally_fov_x_{al_id}')
-                feature_names.append(f'ally_fov_y_{al_id}')
+                feature_names.append(f"ally_fov_x_{al_id}")
+                feature_names.append(f"ally_fov_y_{al_id}")
 
             if self.unit_type_bits > 0:
                 for bit in range(self.unit_type_bits):
-                    feature_names.append(f'ally_unit_type_{al_id}_bit_{bit}')
+                    feature_names.append(f"ally_unit_type_{al_id}_bit_{bit}")
 
         # Enemy features.
         for e_id in range(self.n_enemies):
-            feature_names.append(f'enemy_health_{e_id}')
-            feature_names.append(f'enemy_relative_x_{e_id}')
-            feature_names.append(f'enemy_relative_y_{e_id}')
+            feature_names.append(f"enemy_health_{e_id}")
+            feature_names.append(f"enemy_relative_x_{e_id}")
+            feature_names.append(f"enemy_relative_y_{e_id}")
 
             if self.shield_bits_enemy > 0:
-                feature_names.append(f'enemy_shield_{e_id}')
+                feature_names.append(f"enemy_shield_{e_id}")
 
             if self.unit_type_bits > 0:
                 for bit in range(self.unit_type_bits):
-                    feature_names.append(f'enemy_unit_type_{e_id}_bit_{bit}')
+                    feature_names.append(f"enemy_unit_type_{e_id}_bit_{bit}")
 
         if self.state_last_action:
             for al_id in range(self.n_agents):
                 for action_idx in range(self.n_actions):
-                    feature_names.append(f'ally_last_action_{al_id}_action_{action_idx}')
+                    feature_names.append(
+                        f"ally_last_action_{al_id}_action_{action_idx}"
+                    )
 
         if self.state_timestep_number:
             feature_names.append("timestep")
@@ -1157,8 +1159,12 @@ class StarCraft2Env(MultiAgentEnv):
             if self.obs_all_health and self.shield_bits_enemy > 0:
                 feature_names.append(f"enemy_shield_{e_id}")
             if self.unit_type_bits > 0:
-                feature_names.extend([f'enemy_unit_type_{e_id}_bit_{bit}'
-                                      for bit in range(self.unit_type_bits)])
+                feature_names.extend(
+                    [
+                        f"enemy_unit_type_{e_id}_bit_{bit}"
+                        for bit in range(self.unit_type_bits)
+                    ]
+                )
 
         # Ally features.
         # From the perspective of agent 0.
@@ -1176,18 +1182,31 @@ class StarCraft2Env(MultiAgentEnv):
                 feature_names.append(f"ally_health_{al_id}")
                 if self.shield_bits_ally > 0:
                     feature_names.append(f"ally_shield_{al_id}")
-            if self.stochastic_attack and (self.observe_attack_probs or self.zero_pad_stochastic_attack):
+            if self.stochastic_attack and (
+                self.observe_attack_probs or self.zero_pad_stochastic_attack
+            ):
                 feature_names.append(f"ally_attack_prob_{al_id}")
-            if self.stochastic_health and (self.observe_teammate_health or self.zero_pad_health):
+            if self.stochastic_health and (
+                self.observe_teammate_health or self.zero_pad_health
+            ):
                 feature_names.append(f"ally_health_level_{al_id}")
             if self.unit_type_bits > 0 and (
-                    (not self.replace_teammates or self.observe_teammate_types) or self.zero_pad_unit_types
+                (not self.replace_teammates or self.observe_teammate_types)
+                or self.zero_pad_unit_types
             ):
-                feature_names.extend([f"ally_unit_type_{al_id}_bit_{bit}"
-                                      for bit in range(self.unit_type_bits)])
+                feature_names.extend(
+                    [
+                        f"ally_unit_type_{al_id}_bit_{bit}"
+                        for bit in range(self.unit_type_bits)
+                    ]
+                )
             if self.obs_last_action:
-                feature_names.extend([f"ally_last_action_{al_id}_action_{action}"
-                                      for action in range(self.n_actions)])
+                feature_names.extend(
+                    [
+                        f"ally_last_action_{al_id}_action_{action}"
+                        for action in range(self.n_actions)
+                    ]
+                )
 
         # Own features.
         if self.obs_own_health:
@@ -1204,7 +1223,10 @@ class StarCraft2Env(MultiAgentEnv):
             feature_names.extend(["own_fov_x", "own_fov_y"])
         if self.unit_type_bits > 0:
             feature_names.extend(
-                [f"own_unit_type_bit_{bit}" for bit in range(self.unit_type_bits)]
+                [
+                    f"own_unit_type_bit_{bit}"
+                    for bit in range(self.unit_type_bits)
+                ]
             )
         if not self.obs_starcraft:
             feature_names = []
