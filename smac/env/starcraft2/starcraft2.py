@@ -87,7 +87,9 @@ class StarCraft2Env(MultiAgentEnv):
         obs_timestep_number=False,
         obs_own_pos=False,
         obs_starcraft=True,
+        obs_ally_fov=False,
         conic_fov=False,
+        conic_shooting=False,
         num_fov_actions=12,
         state_last_action=True,
         state_timestep_number=False,
@@ -225,6 +227,7 @@ class StarCraft2Env(MultiAgentEnv):
         self.obs_terrain_height = obs_terrain_height
         self.obs_timestep_number = obs_timestep_number
         self.obs_starcraft = obs_starcraft
+        self.obs_ally_fov = obs_ally_fov
         self.state_last_action = state_last_action
         self.state_timestep_number = state_timestep_number
         if self.obs_all_health:
@@ -283,9 +286,14 @@ class StarCraft2Env(MultiAgentEnv):
         )
         self.random_start = "start_positions" in self.capability_config
         self.conic_fov = conic_fov
-        self.n_fov_actions = num_fov_actions if self.conic_fov else 0
+        self.conic_shooting = conic_shooting
+        self.n_fov_actions = (
+            num_fov_actions if self.conic_fov or self.conic_shooting else 0
+        )
         self.conic_fov_angle = (
-            (2 * np.pi) / self.n_fov_actions if self.conic_fov else 0
+            (2 * np.pi) / self.n_fov_actions
+            if self.conic_fov or self.conic_shooting
+            else 0
         )
         # Other
         self.game_version = game_version
@@ -336,7 +344,7 @@ class StarCraft2Env(MultiAgentEnv):
             self.ally_state_attr_names += ["shield"]
         if self.shield_bits_enemy > 0:
             self.enemy_state_attr_names += ["shield"]
-        if self.conic_fov:
+        if self.conic_fov or self.conic_shooting:
             self.ally_state_attr_names += ["fov_x", "fov_y"]
 
         self.capability_attr_names = []
@@ -609,7 +617,7 @@ class StarCraft2Env(MultiAgentEnv):
 
         try:
 
-            if self.conic_fov:
+            if self.conic_fov or self.conic_shooting:
                 self.render_fovs()
             self._controller.actions(req_actions)
             # Make step in SC2, i.e. apply actions
@@ -781,7 +789,9 @@ class StarCraft2Env(MultiAgentEnv):
             )
             if self.debug:
                 logging.debug("Agent {}: Move West".format(a_id))
-        elif self.conic_fov and action in range(6, 6 + self.n_fov_actions):
+        elif (self.conic_fov or self.conic_shooting) and action in range(
+            6, 6 + self.n_fov_actions
+        ):
             self.fov_directions[a_id] = self.canonical_fov_directions[
                 action - 6
             ]
@@ -1293,6 +1303,7 @@ class StarCraft2Env(MultiAgentEnv):
                     if self.conic_fov
                     else dist < sight_range
                 )
+
                 if (enemy_visible and e_unit.health > 0) or (
                     e_unit.health > 0 and fully_observable
                 ):  # visible and alive
@@ -1343,6 +1354,7 @@ class StarCraft2Env(MultiAgentEnv):
                     if self.conic_fov
                     else dist < sight_range
                 )
+
                 if (ally_visible and al_unit.health > 0) or (
                     al_unit.health > 0 and fully_observable
                 ):  # visible and alive
@@ -1387,6 +1399,11 @@ class StarCraft2Env(MultiAgentEnv):
                         ind += 1
                     elif self.stochastic_health and self.zero_pad_health:
                         ind += 1
+                    if self.obs_ally_fov:
+                        ally_feats[i, ind : ind + 2] = self.fov_directions[
+                            al_id
+                        ]
+                        ind += 2
                     if self.unit_type_bits > 0 and (
                         not self.replace_teammates
                         or self.observe_teammate_types
@@ -1422,7 +1439,7 @@ class StarCraft2Env(MultiAgentEnv):
                 own_feats[ind] = x / self.map_x
                 own_feats[ind + 1] = y / self.map_y
                 ind += 2
-            if self.conic_fov:
+            if self.conic_fov or self.conic_shooting:
                 own_feats[ind : ind + 2] = self.fov_directions[agent_id]
                 ind += 2
             if self.unit_type_bits > 0:
@@ -1600,7 +1617,7 @@ class StarCraft2Env(MultiAgentEnv):
                 if self.stochastic_health:
                     ally_state[al_id, ind] = self.agent_health_levels[al_id]
                     ind += 1
-                if self.conic_fov:
+                if self.conic_fov or self.conic_shooting:
                     ally_state[al_id, ind : ind + 2] = self.fov_directions[
                         al_id
                     ]
@@ -1661,6 +1678,9 @@ class StarCraft2Env(MultiAgentEnv):
         if self.obs_all_health:
             nf_al += 1 + self.shield_bits_ally
 
+        if self.obs_ally_fov:
+            nf_al += 2
+
         if self.obs_last_action:
             nf_al += self.n_actions
 
@@ -1673,7 +1693,7 @@ class StarCraft2Env(MultiAgentEnv):
         own_feats = self.get_cap_size()
         if self.obs_own_health and self.obs_starcraft:
             own_feats += 1 + self.shield_bits_ally
-        if self.conic_fov and self.obs_starcraft:
+        if (self.conic_fov or self.conic_shooting) and self.obs_starcraft:
             own_feats += 2
         if self.obs_own_pos and self.obs_starcraft:
             own_feats += 2
@@ -1880,7 +1900,7 @@ class StarCraft2Env(MultiAgentEnv):
             if self.can_move(unit, Direction.WEST):
                 avail_actions[5] = 1
 
-            if self.conic_fov:
+            if self.conic_fov or self.conic_shooting:
                 avail_actions[6 : 6 + self.n_fov_actions] = [
                     1
                 ] * self.n_fov_actions
@@ -1904,11 +1924,12 @@ class StarCraft2Env(MultiAgentEnv):
                     )
                     can_shoot = (
                         dist <= shoot_range
-                        if not self.conic_fov
+                        if not self.conic_shooting
                         else self.is_position_in_cone(
                             agent_id, t_unit.pos, range="shoot_range"
                         )
                     )
+
                     if can_shoot:
                         avail_actions[t_id + self.n_actions_no_attack] = 1
 
