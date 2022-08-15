@@ -1,112 +1,122 @@
+# SMACv2 Documentation
 
+# Introduction
 
-# SMACv2 - StarCraft Multi-Agent Challenge
+SMACv2 is an update to [Whirl’s](https://whirl.cs.ox.ac.uk/) [Starcraft Multi-Agent Challenge](https://github.com/oxwhirl/smac), which is a benchmark for research in the field of cooperative multi-agent reinforcement learning. SMAC and SMACv2 both focus on decentralised micromanagement scenarios in [StarCraft II](https://starcraft2.com/en-gb/), rather than the full game. It makes use of Blizzard’s StarCraft II Machine Learning API as well as Deepmind’s PySC2. We hope that you will enjoy using SMACv2! More details about SMAC can be found in the [SMAC README](https://github.com/oxwhirl/smac/blob/master/README.md) as well as the [SMAC paper](https://arxiv.org/abs/1902.04043). **SMAC retains exactly the same API as SMAC so you should not need to change your algorithm code other than adjusting to the new observation and state size**.
 
-[SMACv2](https://github.com/oxwhirl/smacv2) is an update to [WhiRL](http://whirl.cs.ox.ac.uk)'s [SMAC](htps://github.com/oxwhirl/smac) environment for research in the field of collaborative multi-agent reinforcement learning (MARL) based on [Blizzard](http://blizzard.com)'s [StarCraft II](https://en.wikipedia.org/wiki/StarCraft_II:_Wings_of_Liberty) RTS game. SMACv2 makes use of Blizzard's [StarCraft II Machine Learning API](https://github.com/Blizzard/s2client-proto) and [DeepMind](https://deepmind.com)'s [PySC2](https://github.com/deepmind/pysc2) to provide a convenient interface for autonomous agents to interact with StarCraft II, getting observations and performing actions. Unlike the [PySC2](https://github.com/deepmind/pysc2), SMACv2 concentrates on *decentralised micromanagement* scenarios, where each unit of the game is controlled by an individual RL agent.
+If you encounter difficulties using SMACv2, or have suggestions please raise an issue, or better yet, open a pull request! If you make changes to the SMACv2 state or observation space as part of your work, and believe they help performance, please do so as a wrapper around SMACv2 and open a pull request to allow others to benefit from your work 🙂. 
 
+The aim of this README is to answer some basic technical questions and to get people started with SMACv2. For a more scientific account of the work of developing the benchmark, please read our paper!
 
-# Quick Start
+# Differences To SMAC
 
-## Installing SMAC
+SMACv2 makes three major changes to SMACv2: randomising start positions, randomising unit types, and restricting the agent field-of-view and shooting range to a cone. These first two changes were motivated by the discovery that many maps in SMAC lack enough randomness to challenge contemporary MARL algorithms. The final change requires agents to explore their environment and effectively gather information. For more details on the motivation behind these changes, please check the accompanying paper, where these are discussed in much more detail!
 
-You can install SMAC by using the following command:
+## Capability Config
 
-```shell
+All the procedurally generated content in SMACv2 is managed through the **Capability Config.** This describes what units are generated and in what positions. The presence of keys in this config tells SMACv2 that a certain environment component is generated or not. As an example, consider the below config:
+
+```yaml
+capability_config:
+    n_units: 5
+    team_gen:
+      dist_type: "weighted_teams"
+      unit_types: 
+        - "marine"
+        - "marauder"
+        - "medivac"
+      weights:
+        - 0.45
+        - 0.45
+        - 0.1
+      exception_unit_types:
+        - "medivac"
+      observe: True
+
+    start_positions:
+      dist_type: "surrounded_and_reflect"
+      p: 0.5
+      n_enemies: 5
+      map_x: 32
+      map_y: 32
+```
+
+This config is the default config for the SMACv2 Terran scenarios. The `start_positions` key tells SMACv2 to randomly generate start positions. Similarly the `team_gen` key tells SMACv2 to randomly generate teams. The `dist_type` tells SMACv2 **how** to generate some content. For example, team generation has the key `weighted_teams` , where each unit type is spawned with a certain weight. In this case a Stalker is spawned with probability `0.45` for example. Don’t worry too much about the other options for now — they are distribution-specific.
+
+All the distributions are implemented in the [distributions.py](https://github.com/oxwhirl/smacv2/blob/main/smac/env/starcraft2/distributions.py) file. We encourage users to contribute their own keys and distributions for procedurally generated content!
+
+## Random Start Positions
+
+Random start positions come in two different types. First, there is the `surrounded` type, where the allied units are spawned in the middle of the map, and surrounded by enemy units. An example is shown below.
+
+![surrounded.png](docs/imgs/surrounded.png)
+
+This challenges the allied units to overcome the enemies approach from multiple angles at once. Secondly, there are the `reflect_position` scenarios. These randomly select positions for the allied units, and then reflect their positions in the midpoint of the map to get the enemy spawn positions. For example see the image below.
+
+![surrounded.png](docs/imgs/reflect.png)
+
+The probability of one type of scenario or the other is controlled with the `p` setting in the capability config. The cones are not visible in the above screenshot because they have not spawned in yet. 
+
+## Random Unit Types
+
+Battles in SMACv2 do not always feature units of the same type each time, as they did in SMAC. Instead, units are spawned randomly according to certain pre-fixed probabilities. Units in StarCraft II are split up into different *races.* Units from different races cannot be on the same team. For each of the three races (Protoss, Terran, and Zerg), SMACv2 uses three unit types.
+
+| Race | Unit | Generation Probability |
+| --- | --- | --- |
+| Terran | Marine | 0.45 |
+|  | Marauder | 0.45 |
+|  | Medivac | 0.1 |
+| Protoss | Stalker | 0.45 |
+|  | Zealot | 0.45 |
+|  | Colossus | 0.1 |
+| Zerg | Zergling | 0.45 |
+|  | Hydralisk | 0.45 |
+|  | Baneling | 0.1 |
+
+Each race has a unit that is generated less often than the others. These are for different reasons. Medivacs are healing-only units and so an abundance of them leads to strange, very long scenarios. Colossi are very powerful units and over-generating them leads to battles being solely determined by colossus use. Banelings are units that explode. If they are too prevalent, the algorithm learns to hide in the corner and hope the enemies all explode!
+
+These weights are all controllable via the `capability_config` . However, if you do decide to change them we recommend that you do some tests to check that the scenarios you have made are sensible! Weights changes can sometimes have unexpected consequences.
+
+## Field-Of-View
+
+The field of view in SMACv2 is restricted to a cone. The units must move this cone around to allow them to view and target their enemies. As in SMAC, the unit sight and shoot ranges are fixed. There are extra actions which allow agents to ‘snap’ their cone to a specific point around a circle. These actions are always available. 
+
+The cones are displayed in the example screenshots above using dotted lines. The conic field-of-view is controlled with the `conic_fov` option.
+
+# Getting Started
+
+This section will take you through the basic set-up of SMACv2. The set-up process has changed very little from the process for SMAC, so if you are familiar with that, follow the steps as you usually would. Make sure you have the `32x32_flat.SC2Map` map file in your `SMAC_Maps` folder. 
+
+First, you will need to install StarCraft II. On windows or mac, follow the instructions on the [StarCraft website](https://starcraft2.com/en-gb/). For linux, you can use the bash script [here](https://github.com/benellis3/mappo/blob/main/install_sc2.sh). Then copy 
+
+Then simply install SMAC as a package:
+
+```bash
 pip install git+https://github.com/oxwhirl/smacv2.git
 ```
 
-Alternatively, you can clone the SMAC repository and then install `smac` with its dependencies:
+[NOTE]: If you want to extend SMACv2, you must install it like this:
 
-```shell
-git clone https://github.com/oxwhirl/smacv2.git
-pip install -e smac/
-```
-
-*NOTE*: If you want to extend SMAC, please install the package as follows:
-
-```shell
+```bash
 git clone https://github.com/oxwhirl/smacv2.git
 cd smac
 pip install -e ".[dev]"
 pre-commit install
 ```
 
-You may also need to upgrade pip: `pip install --upgrade pip` for the install to work.
+If you tried these instructions and couldn’t get SMACv2 to work, please let us know by raising an issue. 
 
-## Installing StarCraft II
+# Modifying SMACv2
 
-SMAC is based on the full game of StarCraft II (versions >= 3.16.1). To install the game, follow the commands bellow.
+SMACv2 procedurally generates some content. We encourage everyone to modify and expand upon the procedurally generated content in SMACv2. 
 
-### Linux
+Procedurally generated content conceptually has two parts: a distribution and an implementation. The implementation part lives in the [starcraft2.py](https://github.com/oxwhirl/smacv2/blob/main/smac/env/starcraft2/starcraft2.py) file and should handle actually generating whatever content is required (e.g. the spawning units at the correct start positions) using the StarCraft APIs given a config passed in at the start of the episode to the `reset` function. 
 
-Please use the Blizzard's [repository](https://github.com/Blizzard/s2client-proto#downloads) to download the Linux version of StarCraft II. By default, the game is expected to be in `~/StarCraftII/` directory. This can be changed by setting the environment variable `SC2PATH`.
+The second part is the distribution. These live in [distributions.py](https://github.com/oxwhirl/smacv2/blob/main/smac/env/starcraft2/distributions.py) and specify the distribution the content is generated according to. For example start positions might be generated randomly across the whole map. The `distributions.py` file contains a few examples of distributions for the already implemented generated content in SMAC.
 
-### MacOS/Windows
+# Code Example
 
-Please install StarCraft II from [Battle.net](https://battle.net). The free [Starter Edition](http://battle.net/sc2/en/legacy-of-the-void/) also works. PySC2 will find the latest binary should you use the default install location. Otherwise, similar to the Linux version, you would need to set the `SC2PATH` environment variable with the correct location of the game.
-
-## SMAC maps
-
-SMAC is composed of combat scenarios with pre-configured maps. Before SMAC can be used, these maps need to be downloaded into the `Maps` directory of StarCraft II.
-
-You can find the maps in the `smac/env/starcraft2/maps/SMAC_Maps` directory. Copy this to your `$SC2PATH/Maps` directory.
-
-### List the maps
-
-To see the list of SMAC maps, together with the number of ally and enemy units and episode limit, run:
-
-```shell
-python -m smac.bin.map_list 
-```
-
-### Creating new maps
-
-Users can extend SMAC by adding new maps/scenarios. To this end, one needs to:
-
-- Design a new map/scenario using StarCraft II Editor:
-  - Please take a close look at the existing maps to understand the basics that we use (e.g. Triggers, Units, etc),
-  - We make use of special RL units which never automatically start attacking the enemy. [Here](https://docs.google.com/document/d/1BfAM_AtZWBRhUiOBcMkb_uK4DAZW3CpvO79-vnEOKxA/edit?usp=sharing) is the step-by-step guide on how to create new RL units based on existing SC2 units,
-- Add the map information in [smac_maps.py](https://github.com/oxwhirl/smac/blob/master/smac/env/starcraft2/maps/smac_maps.py),
-- The newly designed RL units have new ids which need to be handled in [starcraft2.py](https://github.com/oxwhirl/smac/blob/master/smac/env/starcraft2/starcraft2.py). 
-
-## Testing SMAC
-
-Please run the following command to make sure that `smac` and its maps are properly installed. 
-
-```bash
-python -m smac.examples.random_agents
-```
-
-## Saving and Watching StarCraft II Replays
-
-### Saving a replay
-
-If you’ve using our [PyMARL](https://github.com/oxwhirl/pymarl) framework for multi-agent RL, here’s what needs to be done:
-1. **Saving models**: We run experiments on *Linux* servers with `save_model = True` (also `save_model_interval` is relevant) setting so that we have training checkpoints (parameters of neural networks) saved (click [here](https://github.com/oxwhirl/pymarl#saving-and-loading-learnt-models) for more details).
-2. **Loading models**: Learnt models can be loaded using the `checkpoint_path` parameter. If you run PyMARL on *MacOS* (or *Windows*) while also setting `save_replay=True`, this will save a .SC2Replay file for `test_nepisode` episodes on the test mode (no exploration) in the Replay directory of StarCraft II. (click [here](https://github.com/oxwhirl/pymarl#watching-starcraft-ii-replays) for more details).
-
-If you want to save replays without using PyMARL, simply call the `save_replay()` function of SMAC's StarCraft2Env in your training/testing code. This will save a replay of all epsidoes since the launch of the StarCraft II client.
-
-The easiest way to save and later watch a replay on Linux is to use [Wine](https://www.winehq.org/).
-
-### Watching a replay
-
-You can watch the saved replay directly within the StarCraft II client on MacOS/Windows by *clicking on the corresponding Replay file*.
-
-You can also watch saved replays by running:
-
-```shell
-python -m pysc2.bin.play --norender --replay <path-to-replay>
-```
-
-This works for any replay as long as the map can be found by the game. 
-
-For more information, please refer to [PySC2](https://github.com/deepmind/pysc2) documentation.
-
-
-# Code Examples
-
-Below is a small code example which illustrates how SMACv2 can be used. Here, individual agents execute random policies after receiving the observations and global state from the environment.  
+SMACv2 follows the same API as SMAC and so can be used exactly the same way. As an example, the below code allows individual agents to execute random policies. The config corresponds to the 5 unit Terran map from SMACv2. 
 
 ```python
 from __future__ import absolute_import
@@ -122,7 +132,6 @@ import time
 from smac.env.starcraft2.wrapper import StarCraftCapabilityEnvWrapper
 
 logging.set_verbosity(logging.DEBUG)
-
 
 def main():
 
@@ -181,7 +190,16 @@ def main():
             episode_reward += reward
         print("Total reward in episode {} = {}".format(e, episode_reward))
 
-
 if __name__ == "__main__":
     main()
 ```
+
+# FAQ
+
+### Why are the FOV cones not visible in my replay?
+
+Unfortunately, we draw the FOV cones using the `DebugDraw` command in the StarCraft II API. This is not recorded in replays. There is nothing we can do to fix this to our knowledge 😟.  If you instead collect episodes for replays on a machine with a viewable StarCraft game, you will be able to see the FOV cones. If you know how we can fix this, please get in touch by raising an issue, we’d love to hear from you!
+
+### Why do SMAC maps not work in SMACv2?
+
+For now, SMAC is not backwards compatible with old SMAC maps, although we will implement this if there is enough demand.
