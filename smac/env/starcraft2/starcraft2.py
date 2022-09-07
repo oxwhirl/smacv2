@@ -99,6 +99,7 @@ class StarCraft2Env(MultiAgentEnv):
         reward_negative_scale=0.5,
         reward_scale=True,
         reward_scale_rate=20,
+        use_unit_ranges=False,
         kill_unit_step_mul=2,
         fully_observable=False,
         capability_config={},
@@ -297,6 +298,7 @@ class StarCraft2Env(MultiAgentEnv):
         self.window_size = (window_size_x, window_size_y)
         self.replay_dir = replay_dir
         self.replay_prefix = replay_prefix
+        self.use_unit_ranges = use_unit_ranges
 
         # Actions
         self.n_actions_move = 4
@@ -1020,11 +1022,42 @@ class StarCraft2Env(MultiAgentEnv):
 
     def unit_shoot_range(self, agent_id):
         """Returns the shooting range for an agent."""
-        return 6
+        if self.use_unit_ranges:
+            attack_range_map = {
+                self.stalker_id: 6,
+                self.zealot_id: 0.1,
+                self.colossus_id: 7,
+                self.zergling_id: 0.1,
+                self.baneling_id: 0.25,
+                self.hydralisk_id: 5,
+                self.marine_id: 5,
+                self.marauder_id: 6,
+                self.medivac_id: 4,
+            }
+            unit = self.agents[agent_id]
+            return attack_range_map[unit.unit_type]
+        else:
+            return 6
 
     def unit_sight_range(self, agent_id):
         """Returns the sight range for an agent."""
-        return 9
+        # get the unit
+        if self.use_unit_ranges:
+            sight_range_map = {
+                self.stalker_id: 10,
+                self.zealot_id: 9,
+                self.colossus_id: 10,
+                self.zergling_id: 8,
+                self.baneling_id: 8,
+                self.hydralisk_id: 9,
+                self.marine_id: 9,
+                self.marauder_id: 10,
+                self.medivac_id: 11,
+            }
+            unit = self.agents[agent_id]
+            return sight_range_map[unit.unit_type]
+        else:
+            return 9
 
     def unit_max_cooldown(self, unit):
         """Returns the maximal cooldown for a unit."""
