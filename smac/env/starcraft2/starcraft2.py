@@ -100,6 +100,7 @@ class StarCraft2Env(MultiAgentEnv):
         reward_scale=True,
         reward_scale_rate=20,
         use_unit_ranges=False,
+        min_attack_range=1.5,
         kill_unit_step_mul=2,
         fully_observable=False,
         capability_config={},
@@ -299,6 +300,7 @@ class StarCraft2Env(MultiAgentEnv):
         self.replay_dir = replay_dir
         self.replay_prefix = replay_prefix
         self.use_unit_ranges = use_unit_ranges
+        self.min_attack_range = min_attack_range
 
         # Actions
         self.n_actions_move = 4
@@ -1033,7 +1035,7 @@ class StarCraft2Env(MultiAgentEnv):
                 self.medivac_id: 4,
             }
             unit = self.agents[agent_id]
-            return attack_range_map[unit.unit_type]
+            return min(attack_range_map[unit.unit_type], self.min_attack_range)
         else:
             return 6
 
