@@ -203,3 +203,8 @@ Unfortunately, we draw the FOV cones using the `DebugDraw` command in the StarCr
 ### Why do SMAC maps not work in SMACv2?
 
 For now, SMAC is not backwards compatible with old SMAC maps, although we will implement this if there is enough demand.
+
+# Questions/Comments
+
+If you have any questions or suggestions either raise an issue in this repo or email [Ben Ellis](mailto:benellis@robots.ox.ac.uk) and we will try our
+best to answer your query.
