@@ -52,7 +52,9 @@ def main():
         capability_config=distribution_config,
         map_name="10gen_protoss",
         debug=True,
-        conic_fov=True,
+        conic_fov=False,
+        use_unit_ranges=True,
+        fully_observable=False,
     )
     # env.reset()
 
