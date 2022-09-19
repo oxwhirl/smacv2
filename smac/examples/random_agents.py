@@ -1,13 +1,11 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+from __future__ import absolute_import, division, print_function
+
+import time
 from os import replace
 
-from smac.env import StarCraft2Env
 import numpy as np
 from absl import logging
-import time
-
+from smac.env import StarCraft2Env
 from smac.env.starcraft2.wrapper import StarCraftCapabilityEnvWrapper
 
 logging.set_verbosity(logging.DEBUG)
@@ -52,8 +50,9 @@ def main():
         capability_config=distribution_config,
         map_name="10gen_protoss",
         debug=True,
-        conic_fov=True,
-        obs_own_pos=True
+        conic_fov=False,
+        use_unit_ranges=True,
+        fully_observable=False,
     )
     # env.reset()
 
@@ -93,6 +92,7 @@ def main():
         # print("Total reward in episode {} = {}".format(e, episode_reward))
         assert len(state) == len(state_features)
         assert len(obs[0]) == len(obs_features)
+
 
 if __name__ == "__main__":
     main()

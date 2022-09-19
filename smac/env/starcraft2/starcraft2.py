@@ -100,7 +100,7 @@ class StarCraft2Env(MultiAgentEnv):
         reward_scale=True,
         reward_scale_rate=20,
         use_unit_ranges=False,
-        min_attack_range=1.5,
+        min_attack_range=2,
         kill_unit_step_mul=2,
         fully_observable=False,
         capability_config={},
@@ -1037,7 +1037,7 @@ class StarCraft2Env(MultiAgentEnv):
                 self.medivac_id: 4,
             }
             unit = self.agents[agent_id]
-            return min(attack_range_map[unit.unit_type], self.min_attack_range)
+            return max(attack_range_map[unit.unit_type], self.min_attack_range)
         else:
             return 6
 
