@@ -84,6 +84,7 @@ class AllTeamsDistribution(Distribution):
         self.units = config["unit_types"]
         self.n_units = config["n_units"]
         self.exceptions = config.get("exception_unit_types", [])
+        self.env_key = config["env_key"]
         self.combinations = list(
             combinations_with_replacement(self.units, self.n_units)
         )
@@ -94,7 +95,13 @@ class AllTeamsDistribution(Distribution):
             team = list(choice(self.combinations))
             team_id = self.combinations.index(tuple(team))
             shuffle(team)
-        return {"team_gen": {"item": team, "id": team_id}}
+        return {
+            self.env_key: {
+                "ally_team": team,
+                "enemy_team": team,
+                "id": team_id,
+            }
+        }
 
     @property
     def n_tasks(self):
@@ -111,20 +118,44 @@ class WeightedTeamsDistribution(Distribution):
         self.config = config
         self.units = np.array(config["unit_types"])
         self.n_units = config["n_units"]
+        self.n_enemies = config["n_enemies"]
+        assert (
+            self.n_enemies >= self.n_units
+        ), "Only handle larger number of enemies than allies"
         self.weights = np.array(config["weights"])
+        # unit types that cannot make up the whole team
         self.exceptions = config.get("exception_unit_types", set())
         self.rng = default_rng()
+        self.env_key = config["env_key"]
 
-    def generate(self) -> Dict[str, Dict[str, Any]]:
+    def _gen_team(self, n_units: int, use_exceptions: bool):
         team = []
-        while not team or all(member in self.exceptions for member in team):
+        while not team or (
+            all(member in self.exceptions for member in team)
+            and use_exceptions
+        ):
             team = list(
-                self.rng.choice(
-                    self.units, size=(self.n_units,), p=self.weights
-                )
+                self.rng.choice(self.units, size=(n_units,), p=self.weights)
             )
             shuffle(team)
-        return {"team_gen": {"item": team, "id": 0}}
+        return team
+
+    def generate(self) -> Dict[str, Dict[str, Any]]:
+        team = self._gen_team(self.n_units, use_exceptions=True)
+        enemy_team = team.copy()
+        if self.n_enemies > self.n_units:
+            extra_enemies = self._gen_team(
+                self.n_enemies - self.n_units, use_exceptions=True
+            )
+            enemy_team.extend(extra_enemies)
+
+        return {
+            self.env_key: {
+                "ally_team": team,
+                "enemy_team": enemy_team,
+                "id": 0,
+            }
+        }
 
     @property
     def n_tasks(self):
@@ -201,6 +232,10 @@ class ReflectPositionDistribution(Distribution):
     def __init__(self, config):
         self.config = config
         self.n_units = config["n_units"]
+        self.n_enemies = config["n_enemies"]
+        assert (
+            self.n_enemies >= self.n_units
+        ), "Number of enemies must be >= number of units"
         self.map_x = config["map_x"]
         self.map_y = config["map_y"]
         config_copy = deepcopy(config)
@@ -211,13 +246,28 @@ class ReflectPositionDistribution(Distribution):
         # -1 gives a sensible 'buffer zone' of size 2
         config_copy["upper_bound"] = (self.map_x / 2 - 1, self.map_y)
         self.pos_generator = PerAgentUniformDistribution(config_copy)
+        if self.n_enemies > self.n_units:
+            enemy_config_copy = deepcopy(config)
+            enemy_config_copy["env_key"] = "enemy_start_positions"
+            enemy_config_copy["lower_bound"] = (self.map_x / 2, 0)
+            enemy_config_copy["upper_bound"] = (self.map_x, self.map_y)
+            enemy_config_copy["n_units"] = self.n_enemies - self.n_units
+            self.enemy_pos_generator = PerAgentUniformDistribution(
+                enemy_config_copy
+            )
 
     def generate(self) -> Dict[str, Dict[str, Any]]:
         ally_positions_dict = self.pos_generator.generate()
         ally_positions = ally_positions_dict["ally_start_positions"]["item"]
-        enemy_positions = np.zeros_like(ally_positions)
-        enemy_positions[:, 0] = self.map_x - ally_positions[:, 0]
-        enemy_positions[:, 1] = ally_positions[:, 1]
+        enemy_positions = np.zeros((self.n_enemies, 2))
+        enemy_positions[: self.n_units, 0] = self.map_x - ally_positions[:, 0]
+        enemy_positions[: self.n_units, 1] = ally_positions[:, 1]
+        if self.n_enemies > self.n_units:
+            gen_enemy_positions = self.enemy_pos_generator.generate()
+            gen_enemy_positions = gen_enemy_positions["enemy_start_positions"][
+                "item"
+            ]
+            enemy_positions[self.n_units :, :] = gen_enemy_positions
         return {
             "ally_start_positions": {"item": ally_positions, "id": 0},
             "enemy_start_positions": {"item": enemy_positions, "id": 0},

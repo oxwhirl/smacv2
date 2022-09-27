@@ -16,11 +16,12 @@ class StarCraftCapabilityEnvWrapper(MultiAgentEnv):
 
     def _parse_distribution_config(self):
         for env_key, config in self.distribution_config.items():
-            if env_key == "n_units":
+            if env_key == "n_units" or env_key == "n_enemies":
                 continue
             config["env_key"] = env_key
             # add n_units key
             config["n_units"] = self.distribution_config["n_units"]
+            config["n_enemies"] = self.distribution_config["n_enemies"]
             distribution = get_distribution(config["dist_type"])(config)
             self.env_key_to_distribution_map[env_key] = distribution
 
