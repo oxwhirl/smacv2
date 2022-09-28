@@ -2105,7 +2105,7 @@ class StarCraft2Env(MultiAgentEnv):
             shoot_range = self.unit_shoot_range(agent_id)
 
             target_items = self.enemies.items()
-            if self.map_type == "MMM" and unit.unit_type == self.medivac_id:
+            if self.map_type in ("MMM", "terran_gen") and unit.unit_type == self.medivac_id:
                 # Medivacs cannot heal themselves or other flying units
                 target_items = [
                     (t_id, t_unit)
