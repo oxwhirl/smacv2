@@ -340,6 +340,7 @@ class SurroundedPositionDistribution(Distribution):
             ] * (
                 1 - t
             )
+            unit_index += group_membership[i]
 
         return {
             "ally_start_positions": {"item": ally_position, "id": 0},
