@@ -17,6 +17,7 @@ def main():
 
     distribution_config = {
         "n_units": 4,
+        "n_enemies": 4,
         "team_gen": {
             "dist_type": "all_teams",
             "unit_types": ["stalker", "zealot"],
@@ -35,7 +36,8 @@ def main():
         #     "n_enemies": 12,
         # },
         "start_positions": {
-            "dist_type": "reflect_position",
+            "dist_type": "surrounded_and_reflect",
+            "p": 0.5,
             "n_enemies": 4,
             "map_x": 32,
             "map_y": 32,
