@@ -1,5 +1,4 @@
 from random import choice
-from smac.env.multiagentenv import MultiAgentEnv
 from smac.env.starcraft2.wrapper import StarCraftCapabilityEnvWrapper
 
 

@@ -177,7 +177,7 @@ class WeightedTeamsDistribution(Distribution, EvolutionaryDistribution):
         other_unit_types = self.units[self.units != unit_type]
         new_unit_type = self.rng.choice(other_unit_types)
         # change the appropriate unit types
-        if unit > self.n_units:
+        if unit >= self.n_units:
             unit = unit - self.n_units
         enemy_team[unit] = new_unit_type
         if unit < self.n_units:
@@ -444,7 +444,7 @@ class SurroundedPositionDistribution(Distribution, EvolutionaryDistribution):
             assert enemy_group_indices[0][0] == enemy_group_indices[1][0]
             # choose a new group to be in
             enemy_group = enemy_group_indices[0][0]
-            allowed_groups = np.delete(enemy_groups, enemy_group)
+            allowed_groups = np.delete(enemy_groups, enemy_group, axis=0)
             new_pos_index = self.rng.integers(0, allowed_groups.shape[0])
             new_pos = allowed_groups[new_pos_index]
             enemy_positions[enemy_index] = new_pos
@@ -457,8 +457,8 @@ class SurroundedPositionDistribution(Distribution, EvolutionaryDistribution):
             group_index = self.rng.integers(0, enemy_groups)
             group_pos = enemy_groups[group_index]
             # work out which quadrant we are in
-            in_right_half = group_pos[0] < self.map_x / 2
-            in_top_half = group_pos[1] < self.map_y / 2
+            in_right_half = group_pos[0] > self.map_x / 2
+            in_top_half = group_pos[1] > self.map_y / 2
             diagonal_index = 2 * in_right_half + in_top_half
             # generate a new position for the group
             t = self.rng.uniform()
