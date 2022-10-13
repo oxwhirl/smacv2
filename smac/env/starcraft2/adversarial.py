@@ -4,7 +4,7 @@ from smac.env.starcraft2.wrapper import StarCraftCapabilityEnvWrapper
 
 class AdversarialSC2Env(StarCraftCapabilityEnvWrapper):
     def __init__(self, **kwargs):
-        super().__init__(kwargs)
+        super(AdversarialSC2Env, self).__init__(**kwargs)
 
     def reset_random(self):
         """Resets to a random level"""

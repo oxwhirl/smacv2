@@ -22,6 +22,7 @@ def test_perturb_reflect(
     episode_config = {
         "ally_start_positions": {"item": np.array([[0, 1], [2, 3]]), "id": 0},
         "enemy_start_positions": {"item": np.array([[4, 5], [6, 7]]), "id": 0},
+        "team_gen": {"item": ["nothing"], "id": 100},
     }
     capability_config = {
         "map_x": 32,
@@ -45,9 +46,13 @@ def test_perturb_reflect(
             "id": 0,
         },
         "enemy_start_positions": {"item": expected_enemy_positions, "id": 0},
+        "team_gen": {"item": ["nothing"], "id": 100},
     }
     assert expected_config.keys() == new_config.keys()
     for env_key, env_key_dict in new_config.items():
+        if env_key == "team_gen":
+            assert env_key_dict == expected_config[env_key]
+            continue
         assert (expected_config[env_key]["item"] == env_key_dict["item"]).all()
 
 
@@ -74,6 +79,7 @@ def test_perturb_surround(
             "item": np.array([[4, 4], [24, 24]]),
             "id": 0,
         },
+        "team_gen": {"item": "nothing", "id": 0},
     }
     capability_config = {
         "map_x": 32,
@@ -96,14 +102,22 @@ def test_perturb_surround(
             "item": expected_enemy_positions,
             "id": 0,
         },
+        "team_gen": {"item": "nothing", "id": 0},
     }
     assert perturbed_config.keys() == expected_config.keys()
     for env_key, config in perturbed_config.items():
+        if env_key == "team_gen":
+            assert config == expected_config[env_key]
+            continue
         assert (expected_config[env_key]["item"] == config["item"]).all()
 
 
 @pytest.mark.parametrize(
-    ("ally_positions", "is_reflect"), [(np.array([[16, 16], [16, 16]]), False), (np.array([[4, 4], [4, 18]]), True)]
+    ("ally_positions", "is_reflect"),
+    [
+        (np.array([[16, 16], [16, 16]]), False),
+        (np.array([[4, 4], [4, 18]]), True),
+    ],
 )
 def test_perturb_surround_and_reflect(ally_positions, is_reflect):
     episode_config = {
@@ -115,6 +129,7 @@ def test_perturb_surround_and_reflect(ally_positions, is_reflect):
             "item": np.array([[4, 4], [24, 24]]),
             "id": 0,
         },
+        "team_gen": {"item": "nothing", "id": 0},
     }
     capability_config = {
         "map_x": 32,
@@ -186,7 +201,8 @@ def test_unit_type_perturbation(
             "ally_team": ally_team,
             "enemy_team": enemy_team,
             "id": 0,
-        }
+        },
+        "start_positions": {"item": "nothing", "id": 0},
     }
 
     capability_config = {
@@ -207,6 +223,7 @@ def test_unit_type_perturbation(
             "ally_team": expected_ally_team,
             "enemy_team": expected_enemy_team,
             "id": 0,
-        }
+        },
+        "start_positions": {"item": "nothing", "id": 0},
     }
     assert expected_config == new_episode_config

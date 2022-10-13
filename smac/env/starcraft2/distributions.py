@@ -182,13 +182,12 @@ class WeightedTeamsDistribution(Distribution, EvolutionaryDistribution):
         enemy_team[unit] = new_unit_type
         if unit < self.n_units:
             ally_team[unit] = new_unit_type
-        return {
-            self.env_key: {
-                "ally_team": ally_team,
-                "enemy_team": enemy_team,
-                "id": 0,
-            }
+        episode_config[self.env_key] = {
+            "ally_team": ally_team,
+            "enemy_team": enemy_team,
+            "id": 0,
         }
+        return episode_config
 
     @property
     def n_tasks(self):
