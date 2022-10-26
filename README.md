@@ -99,7 +99,7 @@ pip install git+https://github.com/oxwhirl/smacv2.git
 
 ```bash
 git clone https://github.com/oxwhirl/smacv2.git
-cd smac
+cd smacv2
 pip install -e ".[dev]"
 pre-commit install
 ```
