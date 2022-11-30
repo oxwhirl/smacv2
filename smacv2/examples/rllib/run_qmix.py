@@ -15,7 +15,7 @@ from gym.spaces import Tuple
 import ray
 from ray.tune import run_experiments, register_env
 
-from smac.examples.rllib.env import RLlibStarCraft2Env
+from smacv2.examples.rllib.env import RLlibStarCraft2Env
 
 
 if __name__ == "__main__":

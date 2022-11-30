@@ -5,8 +5,8 @@ from os import replace
 
 import numpy as np
 from absl import logging
-from smac.env import StarCraft2Env
-from smac.env.starcraft2.wrapper import StarCraftCapabilityEnvWrapper
+from smacv2.env import StarCraft2Env
+from smacv2.env.starcraft2.wrapper import StarCraftCapabilityEnvWrapper
 
 logging.set_verbosity(logging.DEBUG)
 
@@ -14,47 +14,34 @@ logging.set_verbosity(logging.DEBUG)
 def main():
 
     distribution_config = {
-        "n_units": 4,
+        "n_units": 10,
+        "n_enemies": 11,
         "team_gen": {
-            "dist_type": "all_teams",
-            "unit_types": ["stalker", "zealot"],
+            "dist_type": "weighted_teams",
+            "unit_types": ["marine", "marauder", "medivac"],
+            "weights": [0.45, 0.45, 0.1],
             "observe": True,
+            "exception_unit_types": ["medivac"],
         },
-        # "attack": {
-        #     "dist_type": "per_agent_uniform",
-        #     "lower_bound": 0.8,
-        #     "upper_bound": 1.0,
-        #     "n_units": 12,
-        #     "observe": True,
-        # },
-        # "enemy_mask": {
-        #     "dist_type": "mask",
-        #     "mask_probability": 0.5,
-        #     "n_enemies": 12,
-        # },
+        
         "start_positions": {
-            "dist_type": "reflect_position",
-            "n_enemies": 4,
+            "dist_type": "surrounded_and_reflect",
+            "p": 0.5,
             "map_x": 32,
             "map_y": 32,
         }
-        # "health": {
-        #     "dist_type": "per_agent_uniform",
-        #     "lower_bound": 0.0,
-        #     "upper_bound": 0.2,
-        #     "n_units": 12,
-        #     "observe": True
-        # },
+        
     }
     env = StarCraftCapabilityEnvWrapper(
         capability_config=distribution_config,
-        map_name="10gen_protoss",
-        debug=True,
+        map_name="10gen_terran",
+        debug=False,
         conic_fov=False,
         use_unit_ranges=True,
+        min_attack_range=2,
+        obs_own_pos=True,
         fully_observable=False,
     )
-    # env.reset()
 
     env_info = env.get_env_info()
 
@@ -62,9 +49,9 @@ def main():
     n_agents = env_info["n_agents"]
     cap_size = env_info["cap_shape"]
 
-    n_episodes = 5
-
+    n_episodes = 10
     print("Training episodes")
+    env.reset()
     for e in range(n_episodes):
         env.reset()
         terminated = False
@@ -74,6 +61,7 @@ def main():
 
         while not terminated:
             obs = env.get_obs()
+            print(f"Obs size: {obs[0].shape}")
             state = env.get_state()
             cap = env.get_capabilities()
             # env.render()  # Uncomment for rendering

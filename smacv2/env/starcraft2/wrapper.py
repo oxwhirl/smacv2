@@ -1,6 +1,6 @@
-from smac.env.starcraft2.distributions import get_distribution
-from smac.env.starcraft2.starcraft2 import StarCraft2Env
-from smac.env import MultiAgentEnv
+from smacv2.env.starcraft2.distributions import get_distribution
+from smacv2.env.starcraft2.starcraft2 import StarCraft2Env
+from smacv2.env import MultiAgentEnv
 
 
 class StarCraftCapabilityEnvWrapper(MultiAgentEnv):

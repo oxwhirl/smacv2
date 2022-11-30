@@ -16,8 +16,8 @@ import ray
 from ray.tune import run_experiments, register_env
 from ray.rllib.models import ModelCatalog
 
-from smac.examples.rllib.env import RLlibStarCraft2Env
-from smac.examples.rllib.model import MaskedActionsModel
+from smacv2.examples.rllib.env import RLlibStarCraft2Env
+from smacv2.examples.rllib.model import MaskedActionsModel
 
 
 if __name__ == "__main__":

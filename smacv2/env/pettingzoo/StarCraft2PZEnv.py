@@ -1,4 +1,4 @@
-from smac.env import StarCraft2Env
+from smacv2.env import StarCraft2Env
 from gym.utils import EzPickle
 from gym.utils import seeding
 from gym import spaces
@@ -143,9 +143,7 @@ class smac_parallel_env(ParallelEnv):
             action_mask = action_mask[1:]
             action_mask = np.array(action_mask).astype(np.int8)
             obs = np.asarray(obs, dtype=np.float32)
-            all_obs.append(
-                {"observation": obs, "action_mask": action_mask}
-            )
+            all_obs.append({"observation": obs, "action_mask": action_mask})
         return {agent: obs for agent, obs in zip(self.agents, all_obs)}
 
     def _all_dones(self, step_done=False):
@@ -179,9 +177,7 @@ class smac_parallel_env(ParallelEnv):
         all_rewards = self._all_rewards(self._reward)
         all_observes = self._observe_all()
 
-        self.agents = [
-            agent for agent in self.agents if not all_dones[agent]
-        ]
+        self.agents = [agent for agent in self.agents if not all_dones[agent]]
 
         return all_observes, all_rewards, all_dones, all_infos
 

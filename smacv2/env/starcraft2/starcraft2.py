@@ -2,9 +2,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from smac.env.multiagentenv import MultiAgentEnv
+from smacv2.env.multiagentenv import MultiAgentEnv
 
-from smac.env.starcraft2.maps import get_map_params
+from smacv2.env.starcraft2.maps import get_map_params
 
 
 import atexit
@@ -2105,7 +2105,10 @@ class StarCraft2Env(MultiAgentEnv):
             shoot_range = self.unit_shoot_range(agent_id)
 
             target_items = self.enemies.items()
-            if self.map_type in ("MMM", "terran_gen") and unit.unit_type == self.medivac_id:
+            if (
+                self.map_type in ("MMM", "terran_gen")
+                and unit.unit_type == self.medivac_id
+            ):
                 # Medivacs cannot heal themselves or other flying units
                 target_items = [
                     (t_id, t_unit)
@@ -2156,7 +2159,7 @@ class StarCraft2Env(MultiAgentEnv):
 
     def render(self, mode="human"):
         if self.renderer is None:
-            from smac.env.starcraft2.render import StarCraft2Renderer
+            from smacv2.env.starcraft2.render import StarCraft2Renderer
 
             self.renderer = StarCraft2Renderer(self, mode)
         assert (

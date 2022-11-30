@@ -4,7 +4,7 @@ from __future__ import print_function
 
 import random
 import numpy as np
-from smac.env.pettingzoo import StarCraft2PZEnv
+from smacv2.env.pettingzoo import StarCraft2PZEnv
 
 
 def main():
