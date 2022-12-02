@@ -4,13 +4,13 @@
 
 SMACv2 is an update to [Whirl’s](https://whirl.cs.ox.ac.uk/) [Starcraft Multi-Agent Challenge](https://github.com/oxwhirl/smac), which is a benchmark for research in the field of cooperative multi-agent reinforcement learning. SMAC and SMACv2 both focus on decentralised micromanagement scenarios in [StarCraft II](https://starcraft2.com/en-gb/), rather than the full game. It makes use of Blizzard’s StarCraft II Machine Learning API as well as Deepmind’s PySC2. We hope that you will enjoy using SMACv2! More details about SMAC can be found in the [SMAC README](https://github.com/oxwhirl/smac/blob/master/README.md) as well as the [SMAC paper](https://arxiv.org/abs/1902.04043). **SMAC retains exactly the same API as SMAC so you should not need to change your algorithm code other than adjusting to the new observation and state size**.
 
-If you encounter difficulties using SMACv2, or have suggestions please raise an issue, or better yet, open a pull request! If you make changes to the SMACv2 state or observation space as part of your work, and believe they help performance, please do so as a wrapper around SMACv2 and open a pull request to allow others to benefit from your work 🙂. 
+If you encounter difficulties using SMACv2, or have suggestions please raise an issue, or better yet, open a pull request!
 
 The aim of this README is to answer some basic technical questions and to get people started with SMACv2. For a more scientific account of the work of developing the benchmark, please read our paper!
 
 # Differences To SMAC
 
-SMACv2 makes three major changes to SMACv2: randomising start positions, randomising unit types, and restricting the agent field-of-view and shooting range to a cone. These first two changes were motivated by the discovery that many maps in SMAC lack enough randomness to challenge contemporary MARL algorithms. The final change requires agents to explore their environment and effectively gather information. For more details on the motivation behind these changes, please check the accompanying paper, where these are discussed in much more detail!
+SMACv2 makes three major changes to SMACv2: randomising start positions, randomising unit types, and changing the unit sight and attack ranges. These first two changes were motivated by the discovery that many maps in SMAC lack enough randomness to challenge contemporary MARL algorithms. The final change increases diversity among the different agents and brings the sight range in line with the true values in StarCraft. For more details on the motivation behind these changes, please check the accompanying paper, where these are discussed in much more detail!
 
 ## Capability Config
 
@@ -47,11 +47,11 @@ All the distributions are implemented in the [distributions.py](https://github.c
 
 ## Random Start Positions
 
-Random start positions come in two different types. First, there is the `surrounded` type, where the allied units are spawned in the middle of the map, and surrounded by enemy units. An example is shown below.
+Random start positions come in two different types. First, there is the `surround` type, where the allied units are spawned in the middle of the map, and surrounded by enemy units. An example is shown below.
 
 ![surrounded.png](docs/imgs/surrounded.png)
 
-This challenges the allied units to overcome the enemies approach from multiple angles at once. Secondly, there are the `reflect_position` scenarios. These randomly select positions for the allied units, and then reflect their positions in the midpoint of the map to get the enemy spawn positions. For example see the image below.
+This challenges the allied units to overcome the enemies approach from multiple angles at once. Secondly, there are the `reflect` scenarios. These randomly select positions for the allied units, and then reflect their positions in the midpoint of the map to get the enemy spawn positions. For example see the image below.
 
 ![surrounded.png](docs/imgs/reflect.png)
 
@@ -76,12 +76,6 @@ Battles in SMACv2 do not always feature units of the same type each time, as the
 Each race has a unit that is generated less often than the others. These are for different reasons. Medivacs are healing-only units and so an abundance of them leads to strange, very long scenarios. Colossi are very powerful units and over-generating them leads to battles being solely determined by colossus use. Banelings are units that explode. If they are too prevalent, the algorithm learns to hide in the corner and hope the enemies all explode!
 
 These weights are all controllable via the `capability_config` . However, if you do decide to change them we recommend that you do some tests to check that the scenarios you have made are sensible! Weights changes can sometimes have unexpected consequences.
-
-## Field-Of-View
-
-The field of view in SMACv2 is restricted to a cone. The units must move this cone around to allow them to view and target their enemies. As in SMAC, the unit sight and shoot ranges are fixed. There are extra actions which allow agents to ‘snap’ their cone to a specific point around a circle. These actions are always available. 
-
-The cones are displayed in the example screenshots above using dotted lines. The conic field-of-view is controlled with the `conic_fov` option.
 
 # Getting Started
 
@@ -156,8 +150,10 @@ def main():
         capability_config=distribution_config,
         map_name="10gen_terran",
         debug=True,
-        conic_fov=True,
+        conic_fov=False,
         obs_own_pos=True,
+        use_unit_ranges=True,
+        min_attack_range=2,
     )
 
     env_info = env.get_env_info()
@@ -196,9 +192,6 @@ if __name__ == "__main__":
 
 # FAQ
 
-### Why are the FOV cones not visible in my replay?
-
-Unfortunately, we draw the FOV cones using the `DebugDraw` command in the StarCraft II API. This is not recorded in replays. There is nothing we can do to fix this to our knowledge 😟.  If you instead collect episodes for replays on a machine with a viewable StarCraft game, you will be able to see the FOV cones. If you know how we can fix this, please get in touch by raising an issue, we’d love to hear from you!
 
 ### Why do SMAC maps not work in SMACv2?
 
