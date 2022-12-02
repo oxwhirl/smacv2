@@ -4,18 +4,19 @@ from __future__ import print_function
 
 from setuptools import setup
 
-description = """SMAC - StarCraft Multi-Agent Challenge
+description = """SMACv2 - StarCraft Multi-Agent Challenge
 
-SMAC offers a diverse set of decentralised micromanagement challenges based on
-StarCraft II game. In these challenges, each of the units is controlled by an
-independent, learning agent that has to act based only on local observations,
-while the opponent's units are controlled by the built-in StarCraft II AI.
+SMACv2 is an update to Whirl’s Starcraft Multi-Agent Challenge, 
+which is a benchmark for research in the field of cooperative 
+multi-agent reinforcement learning. SMAC and SMACv2 both focus 
+on decentralised micromanagement scenarios in StarCraft II, 
+rather than the full game.
 
 The accompanying paper which outlines the motivation for using SMAC as well as
 results using the state-of-the-art deep multi-agent reinforcement learning
 algorithms can be found at https://www.arxiv.link
 
-Read the README at https://github.com/oxwhirl/smac for more information.
+Read the README at https://github.com/oxwhirl/smacv2 for more information.
 """
 
 extras_deps = {
@@ -29,29 +30,30 @@ extras_deps = {
 
 
 setup(
-    name="SMAC",
+    name="SMACv2",
     version="1.0.0",
-    description="SMAC - StarCraft Multi-Agent Challenge.",
+    description="SMACv2 - StarCraft Multi-Agent Challenge.",
     long_description=description,
     author="WhiRL",
-    author_email="mikayel@samvelyan.com",
+    author_email="benellis@robots.ox.ac.uk",
     license="MIT License",
     keywords="StarCraft, Multi-Agent Reinforcement Learning",
-    url="https://github.com/oxwhirl/smac",
+    url="https://github.com/oxwhirl/smacv2",
     packages=[
-        "smac",
-        "smac.env",
-        "smac.env.starcraft2",
-        "smac.env.starcraft2.maps",
-        "smac.env.pettingzoo",
-        "smac.bin",
-        "smac.examples",
-        "smac.examples.rllib",
-        "smac.examples.pettingzoo",
+        "smacv2",
+        "smacv2.env",
+        "smacv2.env.starcraft2",
+        "smacv2.env.starcraft2.maps",
+        "smacv2.env.pettingzoo",
+        "smacv2.bin",
+        "smacv2.examples",
+        "smacv2.examples.rllib",
+        "smacv2.examples.pettingzoo",
     ],
     extras_require=extras_deps,
     install_requires=[
         "pysc2>=3.0.0",
+        "protobuf<3.21",
         "s2clientprotocol>=4.10.1.75800.0",
         "absl-py>=0.1.0",
         "numpy>=1.10",
