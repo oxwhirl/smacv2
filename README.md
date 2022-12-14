@@ -100,6 +100,8 @@ pre-commit install
 
 If you tried these instructions and couldn’t get SMACv2 to work, please let us know by raising an issue. 
 
+We also added configs for the protoss, terran and zerg configs to the [examples folder](https://github.com/oxwhirl/smacv2/tree/main/smacv2/examples/configs). Note that you will have to change the `n_units` and `n_enemies` config to access the different scenarios.
+
 # Modifying SMACv2
 
 SMACv2 procedurally generates some content. We encourage everyone to modify and expand upon the procedurally generated content in SMACv2. 
