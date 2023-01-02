@@ -192,8 +192,20 @@ if __name__ == "__main__":
     main()
 ```
 
-# FAQ
+# Citation
+If you use SMACv2 in your work, please cite:
 
+```
+@misc{ellis2022smacv2,
+  url = {https://arxiv.org/abs/2212.07489},
+  author = {Ellis, Benjamin and Moalla, Skander and Samvelyan, Mikayel and Sun, Mingfei and Mahajan, Anuj and Foerster, Jakob N. and Whiteson, Shimon},
+  title = {SMACv2: An Improved Benchmark for Cooperative Multi-Agent Reinforcement Learning},
+  publisher = {arXiv},
+  year = {2022},
+} 
+```
+
+# FAQ
 
 ### Why do SMAC maps not work in SMACv2?
 
