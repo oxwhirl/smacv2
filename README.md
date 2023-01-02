@@ -49,11 +49,16 @@ All the distributions are implemented in the [distributions.py](https://github.c
 
 Random start positions come in two different types. First, there is the `surround` type, where the allied units are spawned in the middle of the map, and surrounded by enemy units. An example is shown below.
 
-![surrounded.png](docs/imgs/surrounded.png)
+<p align="center">
+ <img width="70%" src="docs/imgs/surrounded.png" />
+</p>
 
 This challenges the allied units to overcome the enemies approach from multiple angles at once. Secondly, there are the `reflect` scenarios. These randomly select positions for the allied units, and then reflect their positions in the midpoint of the map to get the enemy spawn positions. For example see the image below.
 
-![surrounded.png](docs/imgs/reflect.png)
+<p align="center">
+ <img width="70%" src="docs/imgs/reflect.png" />
+</p>
+
 
 The probability of one type of scenario or the other is controlled with the `p` setting in the capability config. The cones are not visible in the above screenshot because they have not spawned in yet. 
 
