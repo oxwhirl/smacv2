@@ -105,7 +105,27 @@ pre-commit install
 
 If you tried these instructions and couldn’t get SMACv2 to work, please let us know by raising an issue. 
 
-We also added configs for the protoss, terran and zerg configs to the [examples folder](https://github.com/oxwhirl/smacv2/tree/main/smacv2/examples/configs). Note that you will have to change the `n_units` and `n_enemies` config to access the different scenarios.
+We also added configs for the protoss, terran and zerg configs to the [examples folder](https://github.com/oxwhirl/smacv2/tree/main/smacv2/examples/configs). Note that you will have to change the `n_units` and `n_enemies` config to access the different scenarios. 
+For clarity, the correct settings are in the table below, but the first number in the scenario name is the number of allies (`n_units`) 
+and the second is the number of enemies (`n_enemies`).
+
+|      Scenario      | `n_units`  | `n_enemies` |
+|--------------------|------------|-------------|
+| `protoss_5_vs_5`   |          5 |           5 |
+| `zerg_5_vs_5`      |          5 |           5 |
+| `terran_5_vs_5`    |          5 |           5 |
+| `protoss_10_vs_10` |         10 |          10 |
+| `zerg_10_vs_10`    |         10 |          10 |
+| `terran_10_vs_10`  |         10 |          10 |
+| `protoss_20_vs_20` |         20 |          20 |
+| `zerg_20_vs_20`    |         20 |          20 |
+| `terran_20_vs_20`  |         20 |          20 |
+| `protoss_10_vs_11` |         10 |          11 |
+| `zerg_10_vs_11`    |         10 |          11 |
+| `terran_10_vs_11`  |         10 |          11 |
+| `protoss_20_vs_23` |         20 |          23 |
+| `zerg_20_vs_23`    |         20 |          23 |
+| `terran_20_vs_23`  |         20 |          23 |
 
 # Modifying SMACv2
 
