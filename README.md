@@ -109,23 +109,23 @@ We also added configs for the protoss, terran and zerg configs to the [examples 
 For clarity, the correct settings are in the table below, but the first number in the scenario name is the number of allies (`n_units`) 
 and the second is the number of enemies (`n_enemies`).
 
-|      Scenario      | `n_units`  | `n_enemies` |
-|--------------------|------------|-------------|
-| `protoss_5_vs_5`   |          5 |           5 |
-| `zerg_5_vs_5`      |          5 |           5 |
-| `terran_5_vs_5`    |          5 |           5 |
-| `protoss_10_vs_10` |         10 |          10 |
-| `zerg_10_vs_10`    |         10 |          10 |
-| `terran_10_vs_10`  |         10 |          10 |
-| `protoss_20_vs_20` |         20 |          20 |
-| `zerg_20_vs_20`    |         20 |          20 |
-| `terran_20_vs_20`  |         20 |          20 |
-| `protoss_10_vs_11` |         10 |          11 |
-| `zerg_10_vs_11`    |         10 |          11 |
-| `terran_10_vs_11`  |         10 |          11 |
-| `protoss_20_vs_23` |         20 |          23 |
-| `zerg_20_vs_23`    |         20 |          23 |
-| `terran_20_vs_23`  |         20 |          23 |
+|      Scenario      | Config File          | `n_units`  | `n_enemies` |
+|--------------------|----------------------|------------|-------------|
+| `protoss_5_vs_5`   | sc2_gen_protoss.yaml |          5 |           5 |
+| `zerg_5_vs_5`      | sc2_gen_zerg.yaml    |          5 |           5 |
+| `terran_5_vs_5`    | sc2_gen_terran.yaml  |          5 |           5 |
+| `protoss_10_vs_10` | sc2_gen_protoss.yaml |         10 |          10 |
+| `zerg_10_vs_10`    | sc2_gen_zerg.yaml    |         10 |          10 |
+| `terran_10_vs_10`  | sc2_gen_terran.yaml  |         10 |          10 |
+| `protoss_20_vs_20` | sc2_gen_protoss.yaml |         20 |          20 |
+| `zerg_20_vs_20`    | sc2_gen_zerg.yaml    |         20 |          20 |
+| `terran_20_vs_20`  | sc2_gen_terran.yaml  |         20 |          20 |
+| `protoss_10_vs_11` | sc2_gen_protoss.yaml |         10 |          11 |
+| `zerg_10_vs_11`    | sc2_gen_zerg.yaml    |         10 |          11 |
+| `terran_10_vs_11`  | sc2_gen_terran.yaml  |         10 |          11 |
+| `protoss_20_vs_23` | sc2_gen_protoss.yaml |         20 |          23 |
+| `zerg_20_vs_23`    | sc2_gen_zerg.yaml    |         20 |          23 |
+| `terran_20_vs_23`  | sc2_gen_terran.yaml  |         20 |          23 |
 
 # Modifying SMACv2
 
