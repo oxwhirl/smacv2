@@ -84,7 +84,7 @@ These weights are all controllable via the `capability_config` . However, if you
 
 # Getting Started
 
-This section will take you through the basic set-up of SMACv2. The set-up process has changed very little from the process for SMAC, so if you are familiar with that, follow the steps as you usually would. Make sure you have the `32x32_flat.SC2Map` map file in your `SMAC_Maps` folder. 
+This section will take you through the basic set-up of SMACv2. The set-up process has changed very little from the process for SMAC, so if you are familiar with that, follow the steps as you usually would. Make sure you have the `32x32_flat.SC2Map` map file in your `SMAC_Maps` folder. You can download the `SMAC_Maps` folder [here](https://github.com/oxwhirl/smacv2/releases/tag/maps#:~:text=3-,SMAC_Maps.zip,-503%20KB).
 
 First, you will need to install StarCraft II. On windows or mac, follow the instructions on the [StarCraft website](https://starcraft2.com/en-gb/). For linux, you can use the bash script [here](https://github.com/benellis3/mappo/blob/main/install_sc2.sh). Then copy 
 
