@@ -127,6 +127,12 @@ and the second is the number of enemies (`n_enemies`).
 | `zerg_20_vs_23`    | sc2_gen_zerg.yaml    |         20 |          23 |
 | `terran_20_vs_23`  | sc2_gen_terran.yaml  |         20 |          23 |
 
+# Training Results
+
+The smacv2 repo contains the [results](https://github.com/oxwhirl/smacv2/tree/main/smacv2/examples/results) of MAPPO and QMIX baselines that you can compare now. Please 
+ensure that you are using the correct version of starcraft as otherwise your results will not be
+comparable. Using the `install_sc2.sh` in the [mappo](https://github.com/benellis3/mappo/blob/main/install_sc2.sh) repo for example will ensure this.
+
 # Modifying SMACv2
 
 SMACv2 procedurally generates some content. We encourage everyone to modify and expand upon the procedurally generated content in SMACv2. 
