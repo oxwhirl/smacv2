@@ -12,7 +12,6 @@ logging.set_verbosity(logging.DEBUG)
 
 
 def main():
-
     distribution_config = {
         "n_units": 10,
         "n_enemies": 11,
@@ -23,14 +22,12 @@ def main():
             "observe": True,
             "exception_unit_types": ["medivac"],
         },
-        
         "start_positions": {
             "dist_type": "surrounded_and_reflect",
             "p": 0.5,
             "map_x": 32,
             "map_y": 32,
-        }
-        
+        },
     }
     env = StarCraftCapabilityEnvWrapper(
         capability_config=distribution_config,
@@ -61,7 +58,7 @@ def main():
 
         while not terminated:
             obs = env.get_obs()
-            print(f"Obs size: {obs[0].shape}")
+            # print(f"Obs size: {obs[0].shape}")
             state = env.get_state()
             cap = env.get_capabilities()
             # env.render()  # Uncomment for rendering

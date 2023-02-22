@@ -111,6 +111,7 @@ class StarCraft2Env(MultiAgentEnv):
         heuristic_ai=False,
         heuristic_rest=False,
         debug=False,
+        prob_obs_enemy=0,
     ):
         """
         Create a StarCraftC2Env environment.
@@ -283,6 +284,7 @@ class StarCraft2Env(MultiAgentEnv):
             if not self.replace_teammates
             else self.capability_config["team_gen"]["n_enemies"]
         )
+        self.prob_obs_enemy = prob_obs_enemy
         self.random_start = "start_positions" in self.capability_config
         self.conic_fov = conic_fov
         self.n_fov_actions = num_fov_actions if self.conic_fov else 0
@@ -363,6 +365,7 @@ class StarCraft2Env(MultiAgentEnv):
         self._episode_steps = 0
         self._total_steps = 0
         self._obs = None
+        self.enemy_obs_indicator = []
         self.battles_won = 0
         self.battles_game = 0
         self.timeouts = 0
@@ -529,6 +532,7 @@ class StarCraft2Env(MultiAgentEnv):
         self.enemy_start_positions = episode_config.get(
             "enemy_start_positions", {}
         ).get("item", None)
+        self.enemy_obs_indicator = [None for i in range(self.n_enemies)]
         self.mask_enemies = self.enemy_mask is not None
         ally_team = episode_config.get("team_gen", {}).get("ally_team", None)
         enemy_team = episode_config.get("team_gen", {}).get("enemy_team", None)
@@ -617,7 +621,6 @@ class StarCraft2Env(MultiAgentEnv):
         req_actions = sc_pb.RequestAction(actions=sc_actions)
 
         try:
-
             if self.conic_fov:
                 self.render_fovs()
             self._controller.actions(req_actions)
@@ -651,9 +654,15 @@ class StarCraft2Env(MultiAgentEnv):
         for _al_id, al_unit in self.agents.items():
             if al_unit.health == 0:
                 dead_allies += 1
+                self.enemy_obs_indicator = [
+                    None if i == _al_id else i
+                    for i in self.enemy_obs_indicator
+                ]
+
         for _e_id, e_unit in self.enemies.items():
             if e_unit.health == 0:
                 dead_enemies += 1
+                # del self.enemy_obs_indicator[_e_id]
 
         info["dead_allies"] = dead_allies
         info["dead_enemies"] = dead_enemies
@@ -905,7 +914,6 @@ class StarCraft2Env(MultiAgentEnv):
             self.heuristic_rest
             and self.get_avail_agent_actions(a_id)[action_num] == 0
         ):
-
             # Move towards the target rather than attacking/healing
             if unit.unit_type == self.medivac_id:
                 target_unit = self.agents[self.heuristic_targets[a_id]]
@@ -1509,6 +1517,11 @@ class StarCraft2Env(MultiAgentEnv):
                     if self.conic_fov
                     else dist < sight_range
                 )
+                if enemy_visible:
+                    enemy_visible = self.get_enemy_obs_indicator(
+                        agent_id, e_id
+                    )
+                # print('enemy_visible:', enemy_visible)
                 if (enemy_visible and e_unit.health > 0) or (
                     e_unit.health > 0 and fully_observable
                 ):  # visible and alive
@@ -1549,7 +1562,6 @@ class StarCraft2Env(MultiAgentEnv):
                 al_id for al_id in range(self.n_agents) if al_id != agent_id
             ]
             for i, al_id in enumerate(al_ids):
-
                 al_unit = self.get_unit_by_id(al_id)
                 al_x = al_unit.pos.x
                 al_y = al_unit.pos.y
@@ -1675,6 +1687,7 @@ class StarCraft2Env(MultiAgentEnv):
             logging.debug("Ally feats {}".format(ally_feats))
             logging.debug("Own feats {}".format(own_feats))
 
+        # print(agent_obs)
         return agent_obs
 
     def get_obs(self):
@@ -1751,6 +1764,19 @@ class StarCraft2Env(MultiAgentEnv):
 
     def get_enemy_num_attributes(self):
         return len(self.enemy_state_attr_names)
+
+    def get_enemy_obs_indicator(self, agent_id, e_id):
+        """Returns an indicator for whether ally can observe enemy."""
+        if self.enemy_obs_indicator[e_id] is None:
+            self.enemy_obs_indicator[e_id] = agent_id
+            indicator = True
+        elif self.enemy_obs_indicator[e_id] == agent_id:
+            indicator = True
+        elif np.random.rand() < self.prob_obs_enemy:
+            indicator = True
+        else:
+            indicator = False
+        return indicator
 
     def get_state_dict(self):
         """Returns the global state as a dictionary.

@@ -22,6 +22,7 @@ class StarCraftCapabilityEnvWrapper(MultiAgentEnv):
             # add n_units key
             config["n_units"] = self.distribution_config["n_units"]
             config["n_enemies"] = self.distribution_config["n_enemies"]
+            # config["prob"] = self.distribution_config["prob"]
             distribution = get_distribution(config["dist_type"])(config)
             self.env_key_to_distribution_map[env_key] = distribution
 
