@@ -1536,17 +1536,17 @@ class StarCraft2Env(MultiAgentEnv):
                     if self.conic_fov
                     else dist < sight_range
                 )
-                if enemy_visible:
-                    if not self.ma_mdp:
+                if self.ma_mdp:
+                    if enemy_visible:
+                        if e_id not in self.ma_enemy_window:
+                            enemy_visible = False
+                else:
+                    if enemy_visible:
                         if self.enemy_obs_prior[e_id, agent_id] == 0:
                             enemy_visible = self.get_enemy_obs_indicator(
                                 agent_id, e_id
                             )
                     else:
-                        if e_id not in self.ma_enemy_window:
-                            enemy_visible = False
-                else:
-                    if not self.ma_mdp:
                         if self.enemy_obs_prior[e_id, agent_id] == 1:
                             self.enemy_obs_prior[e_id, agent_id] = 0
                 # print('enemy_visible:', enemy_visible)
@@ -1806,19 +1806,22 @@ class StarCraft2Env(MultiAgentEnv):
 
     def get_enemy_obs_indicator(self, agent_id, e_id):
         """Returns an indicator for whether ally can observe enemy."""
-        if self.enemy_obs_indicator[e_id] is None:
+        if (
+            self.enemy_obs_indicator[e_id] is None
+            or self.enemy_obs_indicator[e_id] == agent_id
+        ):
             self.enemy_obs_indicator[e_id] = agent_id
             if self.enemy_obs_prior[e_id, agent_id] == 0:
                 self.enemy_obs_prior[e_id, agent_id] = 1
             indicator = True
-        elif self.enemy_obs_indicator[e_id] == agent_id:
-            indicator = True
-        elif np.random.rand() < self.prob_obs_enemy:
-            if self.enemy_obs_prior[e_id, agent_id] == 0:
-                self.enemy_obs_prior[e_id, agent_id] = 1
-            indicator = True
         else:
-            indicator = False
+            draw = np.random.rand()
+            if draw < self.prob_obs_enemy:
+                if self.enemy_obs_prior[e_id, agent_id] == 0:
+                    self.enemy_obs_prior[e_id, agent_id] = 1
+                indicator = True
+            else:
+                indicator = False
         return indicator
 
     def get_state_dict(self):

@@ -74,7 +74,7 @@ def main():
             time.sleep(0.15)
             episode_reward += reward
 
-        # print("Total reward in episode {} = {}".format(e, episode_reward))
+        print("Total reward in episode {} = {}".format(e, episode_reward))
         assert len(state) == len(state_features)
         assert len(obs[0]) == len(obs_features)
 
