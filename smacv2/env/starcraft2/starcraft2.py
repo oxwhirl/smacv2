@@ -539,7 +539,7 @@ class StarCraft2Env(MultiAgentEnv):
         ).get("item", None)
         self.enemy_obs_indicator = [None for i in range(self.n_enemies)]
         self.ma_enemy_window = random.sample(
-            range(self.n_enemies), int(round(self.n_enemies / 2))
+            range(self.n_enemies - 1), int(round(self.n_enemies / 2))
         )
         self.mask_enemies = self.enemy_mask is not None
         ally_team = episode_config.get("team_gen", {}).get("ally_team", None)
@@ -673,14 +673,24 @@ class StarCraft2Env(MultiAgentEnv):
                 if self.ma_mdp:
                     if _e_id in self.ma_enemy_window:
                         enemy_replaced = False
-                        while not enemy_replaced:
-                            new_enemy = np.random.choice(range(self.n_enemies))
+                        avail_enemies = [
+                            i
+                            for i in range(self.n_enemies - 1)
+                            if i not in self.ma_enemy_window
+                        ]
+                        count = 0
+                        while not enemy_replaced and count < len(
+                            avail_enemies
+                        ):
+                            new_enemy = np.random.choice(avail_enemies)
                             if self.enemies[new_enemy].health != 0:
+                                # print(new_enemy)
                                 self.ma_enemy_window = [
                                     new_enemy if i == _e_id else i
                                     for i in self.ma_enemy_window
                                 ]
                                 enemy_replaced = True
+                            count += 1
                 # del self.enemy_obs_indicator[_e_id]
 
         info["dead_allies"] = dead_allies
@@ -1725,12 +1735,17 @@ class StarCraft2Env(MultiAgentEnv):
         """
         if self.ma_mdp:
             if np.random.rand() < 0.2:
-                idx = np.random.choice(range(self.n_enemies))
-                enemy = self.ma_enemy_window[idx]
+                enemy = np.random.choice(self.ma_enemy_window)
+                idx = self.ma_enemy_window.index(enemy)
                 e = enemy
                 alive_enemy_chosen = False
+                avail_enemies = [
+                    i
+                    for i in range(self.n_enemies - 1)
+                    if i not in self.ma_enemy_window
+                ]
                 while (e == enemy) or not alive_enemy_chosen:
-                    e = np.random.choice(range(self.n_enemies))
+                    e = np.random.choice(avail_enemies)
                     if self.enemies[e].health != 0:
                         alive_enemy_chosen = True
                 self.ma_enemy_window[idx] = e
