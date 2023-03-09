@@ -113,7 +113,6 @@ class StarCraft2Env(MultiAgentEnv):
         heuristic_rest=False,
         debug=False,
         prob_obs_enemy=0,
-        ma_mdp=False,
     ):
         """
         Create a StarCraftC2Env environment.
@@ -367,10 +366,8 @@ class StarCraft2Env(MultiAgentEnv):
         self._episode_steps = 0
         self._total_steps = 0
         self._obs = None
-        self.enemy_obs_indicator = []
-        self.ma_enemy_window = []
-        self.ma_mdp = ma_mdp
-        self.enemy_obs_prior = np.zeros((self.n_enemies, self.n_agents))
+        self.obs_enemies = np.zeros((self.n_enemies, self.n_agents))
+        self.enemy_seen = [None for i in range(self.n_enemies)]
         self.battles_won = 0
         self.battles_game = 0
         self.timeouts = 0
@@ -537,10 +534,6 @@ class StarCraft2Env(MultiAgentEnv):
         self.enemy_start_positions = episode_config.get(
             "enemy_start_positions", {}
         ).get("item", None)
-        self.enemy_obs_indicator = [None for i in range(self.n_enemies)]
-        self.ma_enemy_window = random.sample(
-            range(self.n_enemies - 1), int(round(self.n_enemies / 2))
-        )
         self.mask_enemies = self.enemy_mask is not None
         ally_team = episode_config.get("team_gen", {}).get("ally_team", None)
         enemy_team = episode_config.get("team_gen", {}).get("enemy_team", None)
@@ -661,37 +654,13 @@ class StarCraft2Env(MultiAgentEnv):
         dead_allies, dead_enemies = 0, 0
         for _al_id, al_unit in self.agents.items():
             if al_unit.health == 0:
-                dead_allies += 1
-                self.enemy_obs_indicator = [
-                    None if i == _al_id else i
-                    for i in self.enemy_obs_indicator
+                self.enemy_seen = [
+                    None if i == _al_id else i for i in self.enemy_seen
                 ]
 
         for _e_id, e_unit in self.enemies.items():
             if e_unit.health == 0:
                 dead_enemies += 1
-                if self.ma_mdp:
-                    if _e_id in self.ma_enemy_window:
-                        enemy_replaced = False
-                        avail_enemies = [
-                            i
-                            for i in range(self.n_enemies - 1)
-                            if i not in self.ma_enemy_window
-                        ]
-                        count = 0
-                        while not enemy_replaced and count < len(
-                            avail_enemies
-                        ):
-                            new_enemy = np.random.choice(avail_enemies)
-                            if self.enemies[new_enemy].health != 0:
-                                # print(new_enemy)
-                                self.ma_enemy_window = [
-                                    new_enemy if i == _e_id else i
-                                    for i in self.ma_enemy_window
-                                ]
-                                enemy_replaced = True
-                            count += 1
-                # del self.enemy_obs_indicator[_e_id]
 
         info["dead_allies"] = dead_allies
         info["dead_enemies"] = dead_enemies
@@ -1546,19 +1515,17 @@ class StarCraft2Env(MultiAgentEnv):
                     if self.conic_fov
                     else dist < sight_range
                 )
-                if self.ma_mdp:
-                    if enemy_visible:
-                        if e_id not in self.ma_enemy_window:
-                            enemy_visible = False
-                else:
-                    if enemy_visible:
-                        if self.enemy_obs_prior[e_id, agent_id] == 0:
-                            enemy_visible = self.get_enemy_obs_indicator(
-                                agent_id, e_id
-                            )
-                    else:
-                        if self.enemy_obs_prior[e_id, agent_id] == 1:
-                            self.enemy_obs_prior[e_id, agent_id] = 0
+                if enemy_visible:
+                    if self.enemy_seen[e_id] is None:
+                        self.obs_enemies[e_id, agent_id] = 1
+                        self.enemy_seen[e_id] = agent_id
+                        for a_id in self.agents.keys():
+                            if a_id != agent_id:
+                                draw = np.random.rand()
+                                if draw < self.prob_obs_enemy:
+                                    self.obs_enemies[e_id, a_id] = 1
+                    elif self.obs_enemies[e_id, agent_id] == 0:
+                        enemy_visible = False
                 # print('enemy_visible:', enemy_visible)
                 if (enemy_visible and e_unit.health > 0) or (
                     e_unit.health > 0 and fully_observable
@@ -1733,22 +1700,6 @@ class StarCraft2Env(MultiAgentEnv):
         NOTE: Agents should have access only to their local observations
         during decentralised execution.
         """
-        if self.ma_mdp:
-            if np.random.rand() < 0.2:
-                enemy = np.random.choice(self.ma_enemy_window)
-                idx = self.ma_enemy_window.index(enemy)
-                e = enemy
-                alive_enemy_chosen = False
-                avail_enemies = [
-                    i
-                    for i in range(self.n_enemies - 1)
-                    if i not in self.ma_enemy_window
-                ]
-                while (e == enemy) or not alive_enemy_chosen:
-                    e = np.random.choice(avail_enemies)
-                    if self.enemies[e].health != 0:
-                        alive_enemy_chosen = True
-                self.ma_enemy_window[idx] = e
         agents_obs = [
             self.get_obs_agent(i, fully_observable=self.fully_observable)
             for i in range(self.n_agents)
@@ -1818,26 +1769,6 @@ class StarCraft2Env(MultiAgentEnv):
 
     def get_enemy_num_attributes(self):
         return len(self.enemy_state_attr_names)
-
-    def get_enemy_obs_indicator(self, agent_id, e_id):
-        """Returns an indicator for whether ally can observe enemy."""
-        if (
-            self.enemy_obs_indicator[e_id] is None
-            or self.enemy_obs_indicator[e_id] == agent_id
-        ):
-            self.enemy_obs_indicator[e_id] = agent_id
-            if self.enemy_obs_prior[e_id, agent_id] == 0:
-                self.enemy_obs_prior[e_id, agent_id] = 1
-            indicator = True
-        else:
-            draw = np.random.rand()
-            if draw < self.prob_obs_enemy:
-                if self.enemy_obs_prior[e_id, agent_id] == 0:
-                    self.enemy_obs_prior[e_id, agent_id] = 1
-                indicator = True
-            else:
-                indicator = False
-        return indicator
 
     def get_state_dict(self):
         """Returns the global state as a dictionary.
