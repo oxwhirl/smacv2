@@ -654,9 +654,11 @@ class StarCraft2Env(MultiAgentEnv):
         dead_allies, dead_enemies = 0, 0
         for _al_id, al_unit in self.agents.items():
             if al_unit.health == 0:
+                dead_allies += 1
                 self.enemy_seen = [
                     None if i == _al_id else i for i in self.enemy_seen
                 ]
+                self.obs_enemies[:, _al_id] = 0
 
         for _e_id, e_unit in self.enemies.items():
             if e_unit.health == 0:
@@ -1517,6 +1519,7 @@ class StarCraft2Env(MultiAgentEnv):
                 )
                 if enemy_visible:
                     if self.enemy_seen[e_id] is None:
+                        # print(e_id, agent_id)
                         self.obs_enemies[e_id, agent_id] = 1
                         self.enemy_seen[e_id] = agent_id
                         for a_id in self.agents.keys():
@@ -1541,10 +1544,11 @@ class StarCraft2Env(MultiAgentEnv):
                     enemy_feats[e_id, 3] = (
                         e_y - y
                     ) / sight_range  # relative Y
-                    show_enemy = (
-                        self.mask_enemies
-                        and not self.enemy_mask[agent_id][e_id]
-                    ) or not self.mask_enemies
+                    # show_enemy = (
+                    #     self.mask_enemies
+                    #     and not self.enemy_mask[agent_id][e_id]
+                    # ) or not self.mask_enemies
+                    show_enemy = enemy_visible
                     ind = 4
                     if self.obs_all_health and show_enemy:
                         enemy_feats[e_id, ind] = (
@@ -1692,7 +1696,8 @@ class StarCraft2Env(MultiAgentEnv):
             logging.debug("Ally feats {}".format(ally_feats))
             logging.debug("Own feats {}".format(own_feats))
 
-        # print(agent_obs)
+        # print("Enemy feats {}".format(enemy_feats))
+        # print("Enemy visuals {}".format(self.obs_enemies[:, agent_id]))
         return agent_obs
 
     def get_obs(self):
@@ -1700,10 +1705,15 @@ class StarCraft2Env(MultiAgentEnv):
         NOTE: Agents should have access only to their local observations
         during decentralised execution.
         """
+        # print("obs_enemies:", self.obs_enemies)
+        agents = list(range(self.n_agents))
+        random.shuffle(agents)
         agents_obs = [
             self.get_obs_agent(i, fully_observable=self.fully_observable)
-            for i in range(self.n_agents)
+            for i in agents
         ]
+        # print("enemy_seen:", self.enemy_seen)
+        # print("obs_enemies (updated):", self.obs_enemies)
         return agents_obs
 
     def get_capabilities_agent(self, agent_id):
