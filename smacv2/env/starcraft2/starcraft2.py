@@ -112,7 +112,7 @@ class StarCraft2Env(MultiAgentEnv):
         heuristic_ai=False,
         heuristic_rest=False,
         debug=False,
-        prob_obs_enemy=0,
+        prob_obs_enemy=1,
     ):
         """
         Create a StarCraftC2Env environment.
@@ -1519,14 +1519,13 @@ class StarCraft2Env(MultiAgentEnv):
                 )
                 if enemy_visible:
                     if self.enemy_seen[e_id] is None:
-                        # print(e_id, agent_id)
-                        self.obs_enemies[e_id, agent_id] = 1
+                        # self.obs_enemies[e_id, agent_id] = 1
                         self.enemy_seen[e_id] = agent_id
                         for a_id in self.agents.keys():
-                            if a_id != agent_id:
-                                draw = np.random.rand()
-                                if draw < self.prob_obs_enemy:
-                                    self.obs_enemies[e_id, a_id] = 1
+                            # if a_id != agent_id:
+                            draw = np.random.rand()
+                            if draw < self.prob_obs_enemy:
+                                self.obs_enemies[e_id, a_id] = 1
                     elif self.obs_enemies[e_id, agent_id] == 0:
                         enemy_visible = False
                 # print('enemy_visible:', enemy_visible)
