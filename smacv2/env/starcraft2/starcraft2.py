@@ -1521,7 +1521,7 @@ class StarCraft2Env(MultiAgentEnv):
                     if self.enemy_seen[e_id] is None:
                         # self.obs_enemies[e_id, agent_id] = 1
                         self.enemy_seen[e_id] = agent_id
-                        for a_id in self.agents.keys():
+                        for a_id in range(self.n_agents):
                             # if a_id != agent_id:
                             draw = np.random.rand()
                             if draw < self.prob_obs_enemy:
