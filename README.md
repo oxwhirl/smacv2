@@ -6,7 +6,7 @@ SMACv2 is an update to [Whirl’s](https://whirl.cs.ox.ac.uk/) [Starcraft Multi-
 
 If you encounter difficulties using SMACv2, or have suggestions please raise an issue, or better yet, open a pull request!
 
-The aim of this README is to answer some basic technical questions and to get people started with SMACv2. For a more scientific account of the work of developing the benchmark, please read our paper!
+The aim of this README is to answer some basic technical questions and to get people started with SMACv2. For a more scientific account of the work of developing the benchmark, please read [SMACv2 paper](https://arxiv.org/abs/2212.07489). Videos of learned policies are available on [our website](https://sites.google.com/view/smacv2).
 
 # Differences To SMAC
 
