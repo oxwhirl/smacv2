@@ -1631,7 +1631,7 @@ class StarCraft2Env(MultiAgentEnv):
                         ally_feats[i, ind + type_id] = 1
                         ind += self.unit_type_bits
                     elif self.unit_type_bits > 0 and self.zero_pad_unit_types:
-                        ind += self.unit_type_bitse
+                        ind += self.unit_type_bits
                     if self.obs_last_action:
                         ally_feats[i, ind:] = self.last_action[al_id]
 
