@@ -1714,8 +1714,8 @@ class StarCraft2Env(MultiAgentEnv):
             self.get_obs_agent(i, fully_observable=self.fully_observable)
             for i in agents
         ]
-        print("enemy_seen:", self.enemy_seen)
-        print("obs_enemies (updated):", self.obs_enemies)
+        # print("enemy_seen:", self.enemy_seen)
+        # print("obs_enemies (updated):", self.obs_enemies)
         return agents_obs
 
     def get_capabilities_agent(self, agent_id):
