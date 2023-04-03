@@ -510,7 +510,6 @@ class StarCraft2Env(MultiAgentEnv):
         """Reset the environment. Required after each full episode.
         Returns initial observations and states.
         """
-        print('...................test satisfied...........................')
         self._episode_steps = 0
         self.episode_config = episode_config
         if self._episode_count == 0:
