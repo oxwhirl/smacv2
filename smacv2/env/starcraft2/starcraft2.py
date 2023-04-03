@@ -81,7 +81,7 @@ class StarCraft2Env(MultiAgentEnv):
         continuing_episode=False,
         obs_all_health=True,
         obs_own_health=True,
-        obs_last_action=False,
+        obs_last_action=True,
         obs_pathing_grid=False,
         obs_terrain_height=False,
         obs_instead_of_state=False,
@@ -537,6 +537,8 @@ class StarCraft2Env(MultiAgentEnv):
         self.mask_enemies = self.enemy_mask is not None
         ally_team = episode_config.get("team_gen", {}).get("ally_team", None)
         enemy_team = episode_config.get("team_gen", {}).get("enemy_team", None)
+        self.obs_enemies = np.zeros((self.n_enemies, self.n_agents))
+        self.enemy_seen = [None for i in range(self.n_enemies)]
         self.death_tracker_ally = np.zeros(self.n_agents)
         self.death_tracker_enemy = np.zeros(self.n_enemies)
         self.fov_directions = np.zeros((self.n_agents, 2))
@@ -1090,6 +1092,7 @@ class StarCraft2Env(MultiAgentEnv):
     def save_replay(self):
         """Save a replay."""
         prefix = self.replay_prefix or self.map_name
+        prefix = prefix + "_" + str(self.prob_obs_enemy)
         replay_dir = self.replay_dir or ""
         replay_path = self._run_config.save_replay(
             self._controller.save_replay(),
@@ -1711,8 +1714,8 @@ class StarCraft2Env(MultiAgentEnv):
             self.get_obs_agent(i, fully_observable=self.fully_observable)
             for i in agents
         ]
-        # print("enemy_seen:", self.enemy_seen)
-        # print("obs_enemies (updated):", self.obs_enemies)
+        print("enemy_seen:", self.enemy_seen)
+        print("obs_enemies (updated):", self.obs_enemies)
         return agents_obs
 
     def get_capabilities_agent(self, agent_id):
