@@ -1520,17 +1520,17 @@ class StarCraft2Env(MultiAgentEnv):
                     if self.conic_fov
                     else dist < sight_range
                 )
-                if enemy_visible:
-                    if self.enemy_seen[e_id] is None:
-                        self.obs_enemies[e_id, agent_id] = 1
-                        self.enemy_seen[e_id] = agent_id
-                        for a_id in range(self.n_agents):
-                            if a_id != agent_id:
-                                draw = np.random.rand()
-                                if draw < self.prob_obs_enemy:
-                                    self.obs_enemies[e_id, a_id] = 1
-                    if self.obs_enemies[e_id, agent_id] == 0:
-                        enemy_visible = False
+                # if enemy_visible:
+                #     if self.enemy_seen[e_id] is None:
+                #         self.obs_enemies[e_id, agent_id] = 1
+                #         self.enemy_seen[e_id] = agent_id
+                #         for a_id in range(self.n_agents):
+                #             if a_id != agent_id:
+                #                 draw = np.random.rand()
+                #                 if draw < self.prob_obs_enemy:
+                #                     self.obs_enemies[e_id, a_id] = 1
+                #     if self.obs_enemies[e_id, agent_id] == 0:
+                #         enemy_visible = False
                 # print('enemy_visible:', enemy_visible)
                 if (enemy_visible and e_unit.health > 0) or (
                     e_unit.health > 0 and fully_observable
