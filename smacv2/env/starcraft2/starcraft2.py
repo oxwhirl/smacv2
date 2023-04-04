@@ -1546,11 +1546,11 @@ class StarCraft2Env(MultiAgentEnv):
                     enemy_feats[e_id, 3] = (
                         e_y - y
                     ) / sight_range  # relative Y
-                    # show_enemy = (
-                    #     self.mask_enemies
-                    #     and not self.enemy_mask[agent_id][e_id]
-                    # ) or not self.mask_enemies
-                    show_enemy = enemy_visible
+                    show_enemy = (
+                        self.mask_enemies
+                        and not self.enemy_mask[agent_id][e_id]
+                    ) or not self.mask_enemies
+                    # show_enemy = enemy_visible
                     ind = 4
                     if self.obs_all_health and show_enemy:
                         enemy_feats[e_id, ind] = (
