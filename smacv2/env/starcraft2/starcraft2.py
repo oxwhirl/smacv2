@@ -1702,10 +1702,10 @@ class StarCraft2Env(MultiAgentEnv):
         """
         agents = list(range(self.n_agents))
         random.shuffle(agents)
-        agents_obs = [
-            self.get_obs_agent(i, fully_observable=self.fully_observable)
-            for i in agents
-        ]
+        agents_obs = np.zeros(len(agents))
+        for agent in agents:
+            agents_obs[agent] = self.get_obs_agent(agent, fully_observable=self.fully_observable)
+        agents_obs = agent_obs.tolist()
         return agents_obs
 
     def get_capabilities_agent(self, agent_id):
