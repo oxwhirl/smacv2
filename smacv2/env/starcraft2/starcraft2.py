@@ -111,6 +111,7 @@ class StarCraft2Env(MultiAgentEnv):
         heuristic_ai=False,
         heuristic_rest=False,
         debug=False,
+        prob_obs_enemy=1.0
     ):
         """
         Create a StarCraftC2Env environment.
@@ -282,6 +283,7 @@ class StarCraft2Env(MultiAgentEnv):
             if not self.replace_teammates
             else self.capability_config["team_gen"]["n_enemies"]
         )
+        self.prob_obs_enemy = prob_obs_enemy
         self.random_start = "start_positions" in self.capability_config
         self.conic_fov = conic_fov
         self.n_fov_actions = num_fov_actions if self.conic_fov else 0
@@ -362,6 +364,8 @@ class StarCraft2Env(MultiAgentEnv):
         self._episode_steps = 0
         self._total_steps = 0
         self._obs = None
+        self.obs_enemies = None
+        self.enemy_tags = None
         self.battles_won = 0
         self.battles_game = 0
         self.timeouts = 0
@@ -531,6 +535,8 @@ class StarCraft2Env(MultiAgentEnv):
         self.mask_enemies = self.enemy_mask is not None
         ally_team = episode_config.get("team_gen", {}).get("ally_team", None)
         enemy_team = episode_config.get("team_gen", {}).get("enemy_team", None)
+        self.obs_enemies = np.zeros((self.n_enemies, self.n_agents))
+        self.enemy_tags = [None for i in range(self.n_enemies)]
         self.death_tracker_ally = np.zeros(self.n_agents)
         self.death_tracker_enemy = np.zeros(self.n_enemies)
         self.fov_directions = np.zeros((self.n_agents, 2))
@@ -650,9 +656,16 @@ class StarCraft2Env(MultiAgentEnv):
         for _al_id, al_unit in self.agents.items():
             if al_unit.health == 0:
                 dead_allies += 1
+                for e in range(self.n_enemies):
+                    if self.enemy_tags[e] == _al_id:
+                        self.enemy_tags[e] = None
+                        self.obs_enemies[e, :] = 0
+                        self.obs_enemies[:, _al_id] = 0
         for _e_id, e_unit in self.enemies.items():
             if e_unit.health == 0:
                 dead_enemies += 1
+                self.enemy_tags[_e_id] = None
+                self.obs_enemies[_e_id, :] = 0
 
         info["dead_allies"] = dead_allies
         info["dead_enemies"] = dead_enemies
@@ -1501,6 +1514,17 @@ class StarCraft2Env(MultiAgentEnv):
                     if self.conic_fov
                     else dist < sight_range
                 )
+                if enemy_visible:
+                    if self.enemy_tags[e_id] is None:
+                        self.obs_enemies[e_id, agent_id] = 1
+                        self.enemy_tags[e_id] = agent_id
+                        for a_id in range(self.n_agents):
+                            if a_id != agent_id:
+                                draw = np.random.rand()
+                                if draw < self.prob_obs_enemy:
+                                    self.obs_enemies[e_id, a_id] = 1
+                    if self.obs_enemies[e_id, agent_id] == 0:
+                        enemy_visible = False
                 if (enemy_visible and e_unit.health > 0) or (
                     e_unit.health > 0 and fully_observable
                 ):  # visible and alive
@@ -1535,7 +1559,8 @@ class StarCraft2Env(MultiAgentEnv):
                     if self.unit_type_bits > 0 and show_enemy:
                         type_id = self.get_unit_type_id(e_unit, False)
                         enemy_feats[e_id, ind + type_id] = 1  # unit type
-
+                if self.obs_enemies[e_id, agent_id] == 0:
+                    enemy_feats = np.zeros(enemy_feats_dim, dtype=np.float32)
             # Ally features
             al_ids = [
                 al_id for al_id in range(self.n_agents) if al_id != agent_id
@@ -1674,9 +1699,11 @@ class StarCraft2Env(MultiAgentEnv):
         NOTE: Agents should have access only to their local observations
         during decentralised execution.
         """
+        agents = list(range(self.n_agents))
+        random.shuffle(agents)
         agents_obs = [
             self.get_obs_agent(i, fully_observable=self.fully_observable)
-            for i in range(self.n_agents)
+            for i in agents
         ]
         return agents_obs
 
