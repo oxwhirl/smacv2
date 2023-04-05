@@ -12,6 +12,7 @@ from warnings import warn
 from operator import attrgetter
 from copy import deepcopy
 import numpy as np
+import random
 import enum
 import math
 from absl import logging
