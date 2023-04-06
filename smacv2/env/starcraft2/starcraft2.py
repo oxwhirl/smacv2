@@ -81,7 +81,7 @@ class StarCraft2Env(MultiAgentEnv):
         continuing_episode=False,
         obs_all_health=True,
         obs_own_health=True,
-        obs_last_action=False,
+        obs_last_action=True,
         obs_pathing_grid=False,
         obs_terrain_height=False,
         obs_instead_of_state=False,
@@ -112,7 +112,7 @@ class StarCraft2Env(MultiAgentEnv):
         heuristic_ai=False,
         heuristic_rest=False,
         debug=False,
-        prob_obs_enemy=1.0
+        prob_obs_enemy=0.0
     ):
         """
         Create a StarCraftC2Env environment.
