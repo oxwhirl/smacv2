@@ -1096,6 +1096,7 @@ class StarCraft2Env(MultiAgentEnv):
         """Save a replay."""
         prefix = self.replay_prefix or self.map_name
         replay_dir = self.replay_dir or ""
+        prefix = prefix + "_" + str(self.prob_obs_enemy)
         replay_path = self._run_config.save_replay(
             self._controller.save_replay(),
             replay_dir=replay_dir,
