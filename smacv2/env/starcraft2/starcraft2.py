@@ -404,7 +404,7 @@ class StarCraft2Env(MultiAgentEnv):
         self.renderer = None
         self.terrain_height = None
         self.pathing_grid = None
-        self.state_feature_names = self.build_state_feature_names()
+        # self.state_feature_names = self.build_state_feature_names()
         self.obs_feature_names = self.build_obs_feature_names()
         self._run_config = None
         self._sc2_proc = None
