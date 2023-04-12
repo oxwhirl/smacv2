@@ -1562,8 +1562,9 @@ class StarCraft2Env(MultiAgentEnv):
                     if self.unit_type_bits > 0 and show_enemy:
                         type_id = self.get_unit_type_id(e_unit, False)
                         enemy_feats[e_id, ind + type_id] = 1  # unit type
-                # if self.obs_enemies[e_id, agent_id] == 0:
-                #     enemy_feats = np.zeros(enemy_feats_dim, dtype=np.float32)
+
+                if self.prob_obs_enemy == 1.0 and self.obs_enemies[e_id, agent_id] == 0:
+                    enemy_feats = np.zeros(enemy_feats_dim, dtype=np.float32)
             # Ally features
             al_ids = [
                 al_id for al_id in range(self.n_agents) if al_id != agent_id
