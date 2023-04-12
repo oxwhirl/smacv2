@@ -1516,15 +1516,16 @@ class StarCraft2Env(MultiAgentEnv):
                     if self.conic_fov
                     else dist < sight_range
                 )
-                if enemy_visible:
-                    if self.enemy_tags[e_id] is None:
-                        self.obs_enemies[e_id, agent_id] = 1
-                        self.enemy_tags[e_id] = agent_id
-                        for a_id in range(self.n_agents):
-                            if a_id != agent_id:
-                                draw = np.random.rand()
-                                if draw < self.prob_obs_enemy:
-                                    self.obs_enemies[e_id, a_id] = 1
+                if self.prob_obs_enemy == 1.0:
+                    if enemy_visible:
+                        if self.enemy_tags[e_id] is None:
+                            self.obs_enemies[e_id, agent_id] = 1
+                            self.enemy_tags[e_id] = agent_id
+                            for a_id in range(self.n_agents):
+                                if a_id != agent_id:
+                                    draw = np.random.rand()
+                                    if draw < self.prob_obs_enemy:
+                                        self.obs_enemies[e_id, a_id] = 1
                     if self.obs_enemies[e_id, agent_id] == 0:
                         enemy_visible = False
                 if (enemy_visible and e_unit.health > 0) or (
@@ -1561,8 +1562,8 @@ class StarCraft2Env(MultiAgentEnv):
                     if self.unit_type_bits > 0 and show_enemy:
                         type_id = self.get_unit_type_id(e_unit, False)
                         enemy_feats[e_id, ind + type_id] = 1  # unit type
-                if self.obs_enemies[e_id, agent_id] == 0:
-                    enemy_feats = np.zeros(enemy_feats_dim, dtype=np.float32)
+                # if self.obs_enemies[e_id, agent_id] == 0:
+                #     enemy_feats = np.zeros(enemy_feats_dim, dtype=np.float32)
             # Ally features
             al_ids = [
                 al_id for al_id in range(self.n_agents) if al_id != agent_id
