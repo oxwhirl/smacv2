@@ -1516,7 +1516,6 @@ class StarCraft2Env(MultiAgentEnv):
                     if self.conic_fov
                     else dist < sight_range
                 )
-                enemy_visible = False
                 if enemy_visible:
                     if self.enemy_tags[e_id] is None:
                         self.obs_enemies[e_id, agent_id] = 1
@@ -1707,10 +1706,6 @@ class StarCraft2Env(MultiAgentEnv):
         agents_obs = [None for i in range(len(agents))]
         for agent in agents:
             agents_obs[agent] = self.get_obs_agent(agent, fully_observable=self.fully_observable)
-        # agents_obs = [
-        #     (self.get_obs_agent(i, fully_observable=self.fully_observable), i)
-        #     for i in agents
-        # ]
         return agents_obs
 
     def get_capabilities_agent(self, agent_id):
