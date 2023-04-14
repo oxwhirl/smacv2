@@ -44,6 +44,16 @@ map_param_registry = {
         "map_type": "protoss_gen",
         "map_name": "32x32_flat",
     },
+    "10gen_5m_vs_6m": {
+            "n_agents": 5,
+            "n_enemies": 6,
+            "limit": 200,
+            "a_race": "T",
+            "b_race": "T",
+            "unit_type_bits": 3,
+            "map_type": "terran_gen",
+            "map_name": "32x32_flat",
+        },
     "3m": {
         "n_agents": 3,
         "n_enemies": 3,
