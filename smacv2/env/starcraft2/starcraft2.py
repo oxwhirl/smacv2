@@ -2448,6 +2448,9 @@ class StarCraft2Env(MultiAgentEnv):
             if self.map_type == "marines":
                 self.marine_id = min_unit_type
                 self._register_unit_mapping("marine", min_unit_type)
+                self.marine_id = self._min_unit_type + 4
+                self.ally_unit_map = {"marine": self.marine_id}
+                self.enemy_unit_map = {"marine": Terran.Marine}
             elif self.map_type == "stalkers_and_zealots":
                 self.stalker_id = min_unit_type
                 self._register_unit_mapping("stalker", min_unit_type)
