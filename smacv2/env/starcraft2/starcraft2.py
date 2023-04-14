@@ -81,7 +81,7 @@ class StarCraft2Env(MultiAgentEnv):
         continuing_episode=False,
         obs_all_health=True,
         obs_own_health=True,
-        obs_last_action=True,
+        obs_last_action=False,
         obs_pathing_grid=False,
         obs_terrain_height=False,
         obs_instead_of_state=False,
@@ -1516,18 +1516,17 @@ class StarCraft2Env(MultiAgentEnv):
                     if self.conic_fov
                     else dist < sight_range
                 )
-                if self.prob_obs_enemy == 1.0:
-                    if enemy_visible:
-                        if self.enemy_tags[e_id] is None:
-                            self.obs_enemies[e_id, agent_id] = 1
-                            self.enemy_tags[e_id] = agent_id
-                            for a_id in range(self.n_agents):
-                                if a_id != agent_id:
-                                    draw = np.random.rand()
-                                    if draw < self.prob_obs_enemy:
-                                        self.obs_enemies[e_id, a_id] = 1
-                    if self.obs_enemies[e_id, agent_id] == 0:
-                        enemy_visible = False
+                if enemy_visible:
+                    if self.enemy_tags[e_id] is None:
+                        self.obs_enemies[e_id, agent_id] = 1
+                        self.enemy_tags[e_id] = agent_id
+                        for a_id in range(self.n_agents):
+                            if a_id != agent_id:
+                                draw = np.random.rand()
+                                if draw < self.prob_obs_enemy:
+                                    self.obs_enemies[e_id, a_id] = 1
+                if self.obs_enemies[e_id, agent_id] == 0:
+                    enemy_visible = False
                 if (enemy_visible and e_unit.health > 0) or (
                     e_unit.health > 0 and fully_observable
                 ):  # visible and alive
@@ -1563,7 +1562,7 @@ class StarCraft2Env(MultiAgentEnv):
                         type_id = self.get_unit_type_id(e_unit, False)
                         enemy_feats[e_id, ind + type_id] = 1  # unit type
 
-                if self.prob_obs_enemy == 1.0 and self.obs_enemies[e_id, agent_id] == 0:
+                if self.obs_enemies[e_id, agent_id] == 0:
                     enemy_feats = np.zeros(enemy_feats_dim, dtype=np.float32)
             # Ally features
             al_ids = [
