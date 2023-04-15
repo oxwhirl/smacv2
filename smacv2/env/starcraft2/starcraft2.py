@@ -2170,6 +2170,7 @@ class StarCraft2Env(MultiAgentEnv):
         dist = self.distance(
             unit.pos.x, unit.pos.y, t_unit.pos.x, t_unit.pos.y
         )
+        shoot_range = self.unit_shoot_range(agent_id)
         can_shoot = (
             dist <= shoot_range
             if not self.conic_fov
