@@ -2166,6 +2166,7 @@ class StarCraft2Env(MultiAgentEnv):
             return [1] + [0] * (self.n_actions - 1)
 
     def get_can_shoot(self, agent_id, t_unit):
+        unit = self.get_unit_by_id(agent_id)
         dist = self.distance(
             unit.pos.x, unit.pos.y, t_unit.pos.x, t_unit.pos.y
         )
