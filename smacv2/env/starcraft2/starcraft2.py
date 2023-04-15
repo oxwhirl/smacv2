@@ -832,12 +832,20 @@ class StarCraft2Env(MultiAgentEnv):
             action_id = actions[action_name]
             target_tag = target_unit.tag
 
-            cmd = r_pb.ActionRawUnitCommand(
-                ability_id=action_id,
-                target_unit_tag=target_tag,
-                unit_tags=[tag],
-                queue_command=False,
-            )
+            can_shoot = self.get_can_shoot(a_id, target_unit)
+
+            if can_shoot:
+
+                cmd = r_pb.ActionRawUnitCommand(
+                    ability_id=action_id,
+                    target_unit_tag=target_tag,
+                    unit_tags=[tag],
+                    queue_command=False,
+                )
+
+            else:
+
+                return None
 
             if self.debug:
                 logging.debug(
@@ -2140,13 +2148,14 @@ class StarCraft2Env(MultiAgentEnv):
                     dist = self.distance(
                         unit.pos.x, unit.pos.y, t_unit.pos.x, t_unit.pos.y
                     )
-                    can_shoot = (
-                        dist <= shoot_range
-                        if not self.conic_fov
-                        else self.is_position_in_cone(
-                            agent_id, t_unit.pos, range="shoot_range"
-                        )
-                    )
+                    # can_shoot = (
+                    #     dist <= shoot_range
+                    #     if not self.conic_fov
+                    #     else self.is_position_in_cone(
+                    #         agent_id, t_unit.pos, range="shoot_range"
+                    #     )
+                    # )
+                    can_shoot = True
                     if can_shoot:
                         avail_actions[t_id + self.n_actions_no_attack] = 1
 
@@ -2155,6 +2164,19 @@ class StarCraft2Env(MultiAgentEnv):
         else:
             # only no-op allowed
             return [1] + [0] * (self.n_actions - 1)
+
+    def get_can_shoot(self, agent_id, t_unit):
+        dist = self.distance(
+            unit.pos.x, unit.pos.y, t_unit.pos.x, t_unit.pos.y
+        )
+        can_shoot = (
+            dist <= shoot_range
+            if not self.conic_fov
+            else self.is_position_in_cone(
+                agent_id, t_unit.pos, range="shoot_range"
+            )
+        )
+        return can_shoot
 
     def get_avail_actions(self):
         """Returns the available actions of all agents in a list."""
