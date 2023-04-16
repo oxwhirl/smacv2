@@ -306,7 +306,7 @@ class ReflectPositionDistribution(Distribution):
         else:
             enemy_positions_dict = self.enemy_pos_generator.generate()
             enemy_positions = enemy_positions_dict["enemy_start_positions"]["item"]
-            ally_positions = np.zeros((self.n_allies, 2))
+            ally_positions = np.zeros((self.n_units, 2))
             ally_positions[: self.n_enemies, 0] = self.map_x - enemy_positions[:, 0]
             ally_positions[: self.n_enemies, 1] = enemy_positions[:, 1]
             gen_ally_positions = self.ally_pos_generator.generate()
