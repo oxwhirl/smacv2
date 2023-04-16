@@ -119,9 +119,9 @@ class WeightedTeamsDistribution(Distribution):
         self.units = np.array(config["unit_types"])
         self.n_units = config["n_units"]
         self.n_enemies = config["n_enemies"]
-        assert (
-            self.n_enemies >= self.n_units
-        ), "Only handle larger number of enemies than allies"
+        # assert (
+        #     self.n_enemies >= self.n_units
+        # ), "Only handle larger number of enemies than allies"
         self.weights = np.array(config["weights"])
         # unit types that cannot make up the whole team
         self.exceptions = config.get("exception_unit_types", set())
@@ -141,14 +141,23 @@ class WeightedTeamsDistribution(Distribution):
         return team
 
     def generate(self) -> Dict[str, Dict[str, Any]]:
-        team = self._gen_team(self.n_units, use_exceptions=True)
-        enemy_team = team.copy()
-        if self.n_enemies > self.n_units:
+        if self.n_enemies == self.n_units:
+            team = self._gen_team(self.n_units, use_exceptions=True)
+            enemy_team = team.copy()
+        elif self.n_enemies > self.n_units:
+            team = self._gen_team(self.n_units, use_exceptions=True)
+            enemy_team = team.copy()
             extra_enemies = self._gen_team(
-                self.n_enemies - self.n_units, use_exceptions=True
+                self.n_enemies - self.n_units, use_exceptions=Trued
             )
             enemy_team.extend(extra_enemies)
-
+        else:
+            enemy_team = self._gen_team(self.n_enemies, use_exceptions=True)
+            team = enemy_team.copy()
+            extra_units = self._gen_team(
+                self.n_units - self.n_enemies, use_exceptions=True
+            )
+            team.extend(extra_units)
         return {
             self.env_key: {
                 "ally_team": team,
