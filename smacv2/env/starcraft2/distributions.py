@@ -141,23 +141,16 @@ class WeightedTeamsDistribution(Distribution):
         return team
 
     def generate(self) -> Dict[str, Dict[str, Any]]:
-        if self.n_enemies == self.n_units:
-            team = self._gen_team(self.n_units, use_exceptions=True)
-            enemy_team = team.copy()
-        elif self.n_enemies > self.n_units:
-            team = self._gen_team(self.n_units, use_exceptions=True)
-            enemy_team = team.copy()
+        team = self._gen_team(self.n_units, use_exceptions=True)
+        enemy_team = team.copy()
+        if self.n_enemies > self.n_units:
             extra_enemies = self._gen_team(
-                self.n_enemies - self.n_units, use_exceptions=Trued
+                self.n_enemies - self.n_units, use_exceptions=True
             )
             enemy_team.extend(extra_enemies)
-        else:
-            enemy_team = self._gen_team(self.n_enemies, use_exceptions=True)
-            team = enemy_team.copy()
-            extra_units = self._gen_team(
-                self.n_units - self.n_enemies, use_exceptions=True
-            )
-            team.extend(extra_units)
+        elif self.n_enemies < self.n_units:
+            enemy_team = enemy_team[:self.n_enemies]
+
         return {
             self.env_key: {
                 "ally_team": team,
@@ -247,21 +240,15 @@ class ReflectPositionDistribution(Distribution):
         # ), "Number of enemies must be >= number of units"
         self.map_x = config["map_x"]
         self.map_y = config["map_y"]
+        config_copy = deepcopy(config)
+        config_copy["env_key"] = "ally_start_positions"
+        config_copy["lower_bound"] = (0, 0)
         # subtract one from the x coordinate because SC2 goes wrong
         # when you spawn ally and enemy units on top of one another
         # -1 gives a sensible 'buffer zone' of size 2
-        if self.n_enemies == self.n_units:
-            config_copy = deepcopy(config)
-            config_copy["lower_bound"] = (0, 0)
-            config_copy["env_key"] = "ally_start_positions"
-            config_copy["upper_bound"] = (self.map_x / 2 - 1, self.map_y)
-            self.pos_generator = PerAgentUniformDistribution(config_copy)
-        elif self.n_enemies > self.n_units:
-            config_copy = deepcopy(config)
-            config_copy["lower_bound"] = (0, 0)
-            config_copy["env_key"] = "ally_start_positions"
-            config_copy["upper_bound"] = (self.map_x / 2 - 1, self.map_y)
-            self.pos_generator = PerAgentUniformDistribution(config_copy)
+        config_copy["upper_bound"] = (self.map_x / 2 - 1, self.map_y)
+        self.pos_generator = PerAgentUniformDistribution(config_copy)
+        if self.n_enemies > self.n_units:
             enemy_config_copy = deepcopy(config)
             enemy_config_copy["env_key"] = "enemy_start_positions"
             enemy_config_copy["lower_bound"] = (self.map_x / 2, 0)
@@ -270,50 +257,23 @@ class ReflectPositionDistribution(Distribution):
             self.enemy_pos_generator = PerAgentUniformDistribution(
                 enemy_config_copy
             )
-        else:
-            enemy_config_copy = deepcopy(config)
-            enemy_config_copy["lower_bound"] = (0, 0)
-            enemy_config_copy["env_key"] = "enemy_start_positions"
-            enemy_config_copy["upper_bound"] = (self.map_x / 2 - 1, self.map_y)
-            self.enemy_pos_generator = PerAgentUniformDistribution(enemy_config_copy)
-            config_copy = deepcopy(config)
-            config_copy["env_key"] = "ally_start_positions"
-            config_copy["lower_bound"] = (self.map_x / 2, 0)
-            config_copy["upper_bound"] = (self.map_x, self.map_y)
-            config_copy["n_enemies"] = self.n_units - self.n_enemies
-            self.pos_generator = PerAgentUniformDistribution(
-                config_copy
-            )
 
     def generate(self) -> Dict[str, Dict[str, Any]]:
-        if self.n_enemies == self.n_units:
-            ally_positions_dict = self.pos_generator.generate()
-            ally_positions = ally_positions_dict["ally_start_positions"]["item"]
-            enemy_positions = np.zeros((self.n_enemies, 2))
+        ally_positions_dict = self.pos_generator.generate()
+        ally_positions = ally_positions_dict["ally_start_positions"]["item"]
+        enemy_positions = np.zeros((self.n_enemies, 2))
+        if self.n_enemies >= self.n_units:
             enemy_positions[: self.n_units, 0] = self.map_x - ally_positions[:, 0]
             enemy_positions[: self.n_units, 1] = ally_positions[:, 1]
-        elif self.n_enemies > self.n_units:
-            ally_positions_dict = self.pos_generator.generate()
-            ally_positions = ally_positions_dict["ally_start_positions"]["item"]
-            enemy_positions = np.zeros((self.n_enemies, 2))
-            enemy_positions[: self.n_units, 0] = self.map_x - ally_positions[:, 0]
-            enemy_positions[: self.n_units, 1] = ally_positions[:, 1]
-            gen_enemy_positions = self.enemy_pos_generator.generate()
-            gen_enemy_positions = gen_enemy_positions["enemy_start_positions"][
-                "item"
-            ]
-            enemy_positions[self.n_units :, :] = gen_enemy_positions
+            if self.n_enemies > self.n_units:
+                gen_enemy_positions = self.enemy_pos_generator.generate()
+                gen_enemy_positions = gen_enemy_positions["enemy_start_positions"][
+                    "item"
+                ]
+                enemy_positions[self.n_units:, :] = gen_enemy_positions
         else:
-            enemy_positions_dict = self.enemy_pos_generator.generate()
-            enemy_positions = enemy_positions_dict["enemy_start_positions"]["item"]
-            ally_positions = np.zeros((self.n_units, 2))
-            ally_positions[: self.n_enemies, 0] = self.map_x - enemy_positions[:, 0]
-            ally_positions[: self.n_enemies, 1] = enemy_positions[:, 1]
-            gen_ally_positions = self.ally_pos_generator.generate()
-            gen_ally_positions = gen_ally_positions["ally_start_positions"][
-                "item"
-            ]
-            ally_positions[self.n_enemies:, :] = gen_ally_positions
+            enemy_positions[:, 0] = self.map_x - ally_positions[: self.n_enemies, 0]
+            enemy_positions[:, 1] = ally_positions[: self.n_enemies, 1]
         return {
             "ally_start_positions": {"item": ally_positions, "id": 0},
             "enemy_start_positions": {"item": enemy_positions, "id": 0},
