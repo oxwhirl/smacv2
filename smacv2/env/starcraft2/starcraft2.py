@@ -1490,6 +1490,7 @@ class StarCraft2Env(MultiAgentEnv):
         ally_feats = np.zeros(ally_feats_dim, dtype=np.float32)
         own_feats = np.zeros(own_feats_dim, dtype=np.float32)
 
+        ind = 6
         if (
             unit.health > 0 and self.obs_starcraft
         ):  # otherwise dead, return all zeros
