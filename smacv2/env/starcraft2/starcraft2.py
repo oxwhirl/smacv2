@@ -1669,9 +1669,9 @@ class StarCraft2Env(MultiAgentEnv):
             if self.conic_fov:
                 own_feats[ind : ind + 2] = self.fov_directions[agent_id]
                 ind += 2
-            if self.unit_type_bits > 0:
-                type_id = self.get_unit_type_id(unit, True)
-                own_feats[ind + type_id] = 1
+        if self.unit_type_bits > 0:
+            type_id = self.get_unit_type_id(unit, True)
+            own_feats[ind + type_id] = 1
         if self.obs_starcraft:
             agent_obs = np.concatenate(
                 (
@@ -2044,6 +2044,7 @@ class StarCraft2Env(MultiAgentEnv):
 
         return arr
 
+
     def get_unit_type_id(self, unit, ally):
         """Returns the ID of unit type in the given scenario."""
 
@@ -2145,9 +2146,9 @@ class StarCraft2Env(MultiAgentEnv):
             # should we only be able to target people in the cone?
             for t_id, t_unit in target_items:
                 if t_unit.health > 0:
-                    dist = self.distance(
-                        unit.pos.x, unit.pos.y, t_unit.pos.x, t_unit.pos.y
-                    )
+                    # dist = self.distance(
+                    #     unit.pos.x, unit.pos.y, t_unit.pos.x, t_unit.pos.y
+                    # )
                     # can_shoot = (
                     #     dist <= shoot_range
                     #     if not self.conic_fov
