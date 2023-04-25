@@ -712,7 +712,7 @@ class StarCraft2Env(MultiAgentEnv):
 
     def get_agent_action(self, a_id, action):
         """Construct the action for agent a_id."""
-        avail_actions = self.get_avail_agent_actions(a_id)
+        avail_actions = self.get_avail_agent_actions(a_id)[0]
         assert (
                 avail_actions[action] == 1
         ), "Agent {} cannot perform action {}".format(a_id, action)
@@ -923,7 +923,7 @@ class StarCraft2Env(MultiAgentEnv):
         # Check if the action is available
         if (
                 self.heuristic_rest
-                and self.get_avail_agent_actions(a_id)[action_num] == 0
+                and self.get_avail_agent_actions(a_id)[0][action_num] == 0
         ):
 
             # Move towards the target rather than attacking/healing
@@ -1498,7 +1498,7 @@ class StarCraft2Env(MultiAgentEnv):
 
             # Movement features. Do not need similar for looking
             # around because this is always possible
-            avail_actions = self.get_avail_agent_actions(agent_id)
+            avail_actions = self.get_avail_agent_actions(agent_id)[0]
             for m in range(self.n_actions_move):
                 move_feats[m] = avail_actions[m + 2]
 
@@ -1697,7 +1697,7 @@ class StarCraft2Env(MultiAgentEnv):
             logging.debug("Obs Agent: {}".format(agent_id).center(60, "-"))
             logging.debug(
                 "Avail. actions {}".format(
-                    self.get_avail_agent_actions(agent_id)
+                    self.get_avail_agent_actions(agent_id)[0]
                 )
             )
             logging.debug("Move feats {}".format(move_feats))
