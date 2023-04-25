@@ -1668,8 +1668,8 @@ class StarCraft2Env(MultiAgentEnv):
             if self.conic_fov:
                 own_feats[ind: ind + 2] = self.fov_directions[agent_id]
                 ind += 2
-            own_feats[ind] = self.unit_shoot_range(agent_id)
-            ind += 1
+            # own_feats[ind] = self.unit_shoot_range(agent_id)
+            # ind += 1
             if self.unit_type_bits > 0:
                 type_id = self.get_unit_type_id(unit, True)
                 own_feats[ind + type_id] = 1
@@ -1922,7 +1922,7 @@ class StarCraft2Env(MultiAgentEnv):
             own_feats += 2
         if self.obs_own_pos and self.obs_starcraft:
             own_feats += 2
-        own_feats += 1
+        # own_feats += 1
         return own_feats
 
     def get_obs_move_feats_size(self):
