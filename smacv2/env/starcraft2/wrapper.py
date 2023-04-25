@@ -52,8 +52,10 @@ class StarCraftCapabilityEnvWrapper(MultiAgentEnv):
         return self.env.get_state_feature_names()
 
     def get_avail_actions(self):
-        avail_actions, true = self.env.get_avail_actions()
-        return avail_actions, true
+        return self.env.get_avail_actions()
+
+    def get_true_avail_actions(self):
+        return self.env.get_true_avail_actions()
 
     def get_env_info(self):
         return self.env.get_env_info()
@@ -75,6 +77,9 @@ class StarCraftCapabilityEnvWrapper(MultiAgentEnv):
 
     def get_avail_agent_actions(self, agent_id):
         return self.env.get_avail_agent_actions(agent_id)
+
+    def get_true_avail_agent_actions(self, agent_id):
+        return self.env.get_true_avail_agent_actions(agent_id)
 
     def render(self):
         return self.env.render()

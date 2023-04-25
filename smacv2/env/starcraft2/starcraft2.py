@@ -712,7 +712,7 @@ class StarCraft2Env(MultiAgentEnv):
 
     def get_agent_action(self, a_id, action):
         """Construct the action for agent a_id."""
-        avail_actions, true = self.get_avail_agent_actions(a_id)
+        avail_actions = self.get_avail_agent_actions(a_id)
         assert (
                 avail_actions[action] == 1
         ), "Agent {} cannot perform action {}".format(a_id, action)
@@ -921,10 +921,9 @@ class StarCraft2Env(MultiAgentEnv):
         action_num = self.heuristic_targets[a_id] + self.n_actions_no_attack
 
         # Check if the action is available
-        avail, true = self.get_avail_agent_actions(a_id)
         if (
                 self.heuristic_rest
-                and avail[action_num] == 0
+                and self.get_avail_agent_actions(a_id)[action_num] == 0
         ):
 
             # Move towards the target rather than attacking/healing
@@ -1499,7 +1498,7 @@ class StarCraft2Env(MultiAgentEnv):
 
             # Movement features. Do not need similar for looking
             # around because this is always possible
-            avail_actions, true = self.get_avail_agent_actions(agent_id)
+            avail_actions = self.get_avail_agent_actions(agent_id)
             for m in range(self.n_actions_move):
                 move_feats[m] = avail_actions[m + 2]
 
@@ -2147,7 +2146,57 @@ class StarCraft2Env(MultiAgentEnv):
                     if t_unit.unit_type != self.medivac_id
                 ]
 
-            true_avail_actions = avail_actions.copy()
+            # should we only be able to target people in the cone?
+            for t_id, t_unit in target_items:
+                if t_unit.health > 0:
+                    avail_actions[t_id + self.n_actions_no_attack] = 1
+
+            return avail_actions
+
+        else:
+            # only no-op allowed
+            return [1] + [0] * (self.n_actions - 1)
+        
+    def get_true_avail_agent_actions(self, agent_id):
+        """Returns the available actions for agent_id."""
+        unit = self.get_unit_by_id(agent_id)
+        if unit.health > 0:
+            # cannot choose no-op when alive
+            avail_actions = [0] * self.n_actions
+
+            # stop should be allowed
+            avail_actions[1] = 1
+
+            # see if we can move
+            if self.can_move(unit, Direction.NORTH):
+                avail_actions[2] = 1
+            if self.can_move(unit, Direction.SOUTH):
+                avail_actions[3] = 1
+            if self.can_move(unit, Direction.EAST):
+                avail_actions[4] = 1
+            if self.can_move(unit, Direction.WEST):
+                avail_actions[5] = 1
+
+            if self.conic_fov:
+                avail_actions[6: 6 + self.n_fov_actions] = [
+                                                               1
+                                                           ] * self.n_fov_actions
+
+            # Can attack only alive units that are alive in the shooting range
+            shoot_range = self.unit_shoot_range(agent_id)
+
+            target_items = self.enemies.items()
+            if (
+                    self.map_type in ("MMM", "terran_gen")
+                    and unit.unit_type == self.medivac_id
+            ):
+                # Medivacs cannot heal themselves or other flying units
+                target_items = [
+                    (t_id, t_unit)
+                    for (t_id, t_unit) in self.agents.items()
+                    if t_unit.unit_type != self.medivac_id
+                ]
+
             # should we only be able to target people in the cone?
             for t_id, t_unit in target_items:
                 if t_unit.health > 0:
@@ -2163,17 +2212,13 @@ class StarCraft2Env(MultiAgentEnv):
                     )
 
                     if can_shoot:
-                        true_avail_actions[t_id + self.n_actions_no_attack] = 1
+                        avail_actions[t_id + self.n_actions_no_attack] = 1
 
-                    avail_actions[t_id + self.n_actions_no_attack] = 1
-
-            return avail_actions, true_avail_actions
+            return avail_actions
 
         else:
             # only no-op allowed
-            avail_actions = [1] + [0] * (self.n_actions - 1)
-            true_avail_actions = avail_actions.copy()
-            return avail_actions, true_avail_actions
+            return [1] + [0] * (self.n_actions - 1)
 
     def get_can_shoot(self, agent_id, t_unit):
         unit = self.get_unit_by_id(agent_id)
@@ -2193,12 +2238,18 @@ class StarCraft2Env(MultiAgentEnv):
     def get_avail_actions(self):
         """Returns the available actions of all agents in a list."""
         avail_actions = []
+        for agent_id in range(self.n_agents):
+            avail_agent = self.get_avail_agent_actions(agent_id)
+            avail_actions.append(avail_agent)
+        return avail_actions
+    
+    def get_true_avail_actions(self):
+        """Returns the available actions of all agents in a list."""
         true_avail_actions = []
         for agent_id in range(self.n_agents):
-            avail_agent, true_avail_agent = self.get_avail_agent_actions(agent_id)
-            avail_actions.append(avail_agent)
+            true_avail_agent = self.get_true_avail_agent_actions(agent_id)
             true_avail_actions.append(true_avail_agent)
-        return avail_actions, true_avail_actions
+        return true_avail_actions
 
     def close(self):
         """Close StarCraft II."""
