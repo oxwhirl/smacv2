@@ -2162,7 +2162,7 @@ class StarCraft2Env(MultiAgentEnv):
         unit = self.get_unit_by_id(agent_id)
         if unit.health > 0:
             # cannot choose no-op when alive
-            avail_actions = [0] * (self.n_actions - self.n_actions_no_attack)
+            avail_actions = [0] * (self.n_actions - self.n_actions_no_attack + 1)
 
             # # stop should be allowed
             # avail_actions[1] = 1
