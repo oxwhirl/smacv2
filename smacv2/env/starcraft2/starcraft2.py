@@ -2147,7 +2147,7 @@ class StarCraft2Env(MultiAgentEnv):
                     if t_unit.unit_type != self.medivac_id
                 ]
 
-            true_avail_actions = avail_actions
+            true_avail_actions = avail_actions.copy()
             # should we only be able to target people in the cone?
             for t_id, t_unit in target_items:
                 if t_unit.health > 0:
@@ -2172,7 +2172,7 @@ class StarCraft2Env(MultiAgentEnv):
         else:
             # only no-op allowed
             avail_actions = [1] + [0] * (self.n_actions - 1)
-            true_avail_actions = avail_actions
+            true_avail_actions = avail_actions.copy()
             return avail_actions, true_avail_actions
 
     def get_can_shoot(self, agent_id, t_unit):
@@ -2550,7 +2550,6 @@ class StarCraft2Env(MultiAgentEnv):
 
     def get_unit_by_id(self, a_id):
         """Get unit by ID."""
-        print(self.agents)
         return self.agents[a_id]
 
     def get_stats(self):
