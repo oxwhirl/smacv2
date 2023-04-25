@@ -2145,28 +2145,34 @@ class StarCraft2Env(MultiAgentEnv):
                     for (t_id, t_unit) in self.agents.items()
                     if t_unit.unit_type != self.medivac_id
                 ]
+
+            true_avail_actions = avail_actions
             # should we only be able to target people in the cone?
             for t_id, t_unit in target_items:
                 if t_unit.health > 0:
-                    # dist = self.distance(
-                    #     unit.pos.x, unit.pos.y, t_unit.pos.x, t_unit.pos.y
-                    # )
-                    # can_shoot = (
-                    #     dist <= shoot_range
-                    #     if not self.conic_fov
-                    #     else self.is_position_in_cone(
-                    #         agent_id, t_unit.pos, range="shoot_range"
-                    #     )
-                    # )
-                    can_shoot = True
-                    if can_shoot:
-                        avail_actions[t_id + self.n_actions_no_attack] = 1
+                    dist = self.distance(
+                        unit.pos.x, unit.pos.y, t_unit.pos.x, t_unit.pos.y
+                    )
+                    can_shoot = (
+                        dist <= shoot_range
+                        if not self.conic_fov
+                        else self.is_position_in_cone(
+                            agent_id, t_unit.pos, range="shoot_range"
+                        )
+                    )
 
-            return avail_actions
+                    if can_shoot:
+                        true_avail_actions[t_id + self.n_actions_no_attack] = 1
+
+                    avail_actions[t_id + self.n_actions_no_attack] = 1
+
+            return avail_actions, true_avail_actions
 
         else:
             # only no-op allowed
-            return [1] + [0] * (self.n_actions - 1)
+            avail_actions = [1] + [0] * (self.n_actions - 1)
+            true_avail_actions = avail_actions
+            return avail_actions, true_avail_actions
 
     def get_can_shoot(self, agent_id, t_unit):
         unit = self.get_unit_by_id(agent_id)
@@ -2186,10 +2192,12 @@ class StarCraft2Env(MultiAgentEnv):
     def get_avail_actions(self):
         """Returns the available actions of all agents in a list."""
         avail_actions = []
+        true_avail_actions = []
         for agent_id in range(self.n_agents):
-            avail_agent = self.get_avail_agent_actions(agent_id)
+            avail_agent, true_avail_agent = self.get_avail_agent_actions(agent_id)
             avail_actions.append(avail_agent)
-        return avail_actions
+            true_avail_actions.append(true_avail_agent)
+        return avail_actions, true_avail_actions
 
     def close(self):
         """Close StarCraft II."""
