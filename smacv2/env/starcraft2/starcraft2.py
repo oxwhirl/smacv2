@@ -2259,7 +2259,7 @@ class StarCraft2Env(MultiAgentEnv):
             # only no-op allowed
             return [0] * (self.n_actions_move + 1)
 
-    def get_true_avail_agent_actions(self, agent_id):
+    def get_attack_agent_actions(self, agent_id):
         """Returns the available actions for agent_id."""
         unit = self.get_unit_by_id(agent_id)
         if unit.health > 0:
