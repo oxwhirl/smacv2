@@ -2214,11 +2214,19 @@ class StarCraft2Env(MultiAgentEnv):
                     if can_shoot:
                         avail_actions[t_id + self.n_actions_no_attack] = 1
 
-            return avail_actions
+            avail_actions_noop = avail_actions[0]
+            avail_actions_move = avail_actions[1:6]
+            avail_actions_attack = avail_actions[6:]
+
+            return [avail_actions_noop, avail_actions_move, avail_actions_attack]
 
         else:
             # only no-op allowed
-            return [1] + [0] * (self.n_actions - 1)
+            avail_actions_noop = [1]
+            avail_actions_move = [0] * self.n_actions_move
+            avail_actions_attack = [0] * self.n_enemies
+
+            return [avail_actions_noop, avail_actions_move, avail_actions_attack]
 
     def get_can_shoot(self, agent_id, t_unit):
         unit = self.get_unit_by_id(agent_id)
