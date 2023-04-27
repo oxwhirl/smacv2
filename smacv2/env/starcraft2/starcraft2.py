@@ -2213,20 +2213,94 @@ class StarCraft2Env(MultiAgentEnv):
 
                     if can_shoot:
                         avail_actions[t_id + self.n_actions_no_attack] = 1
+            return avail_actions
 
-            avail_actions_noop = avail_actions[0]
-            avail_actions_move = avail_actions[1:6]
-            avail_actions_attack = avail_actions[6:]
+        else:
+            return [0] + [1] * (self.n_actions - 1)
 
-            return [avail_actions_noop, avail_actions_move, avail_actions_attack]
+    def get_noop_agent_actions(self, agent_id):
+        """Returns the available actions for agent_id."""
+        unit = self.get_unit_by_id(agent_id)
+        if unit.health > 0:
+            # cannot choose no-op when alive
+            avail_actions = [0]
+            return avail_actions
+
+        else:
+            return [1]
+
+    def get_move_agent_actions(self, agent_id):
+        """Returns the available actions for agent_id."""
+        unit = self.get_unit_by_id(agent_id)
+        if unit.health > 0:
+            # cannot choose no-op when alive
+            avail_actions = [0] * self.n_actions_move
+
+            # stop should be allowed
+            avail_actions[0] = 1
+
+            # see if we can move
+            if self.can_move(unit, Direction.NORTH):
+                avail_actions[1] = 1
+            if self.can_move(unit, Direction.SOUTH):
+                avail_actions[2] = 1
+            if self.can_move(unit, Direction.EAST):
+                avail_actions[3] = 1
+            if self.can_move(unit, Direction.WEST):
+                avail_actions[4] = 1
+
+            if self.conic_fov:
+                avail_actions[6: 6 + self.n_fov_actions] = [
+                                                               1
+                                                           ] * self.n_fov_actions
+            return avail_actions
 
         else:
             # only no-op allowed
-            avail_actions_noop = [1]
-            avail_actions_move = [0] * self.n_actions_move
-            avail_actions_attack = [0] * self.n_enemies
+            return [0] * self.n_actions_move
 
-            return [avail_actions_noop, avail_actions_move, avail_actions_attack]
+    def get_true_avail_agent_actions(self, agent_id):
+        """Returns the available actions for agent_id."""
+        unit = self.get_unit_by_id(agent_id)
+        if unit.health > 0:
+            # cannot choose no-op when alive
+            avail_actions = [0] * self.n_enemies
+
+            # Can attack only alive units that are alive in the shooting range
+            shoot_range = self.unit_shoot_range(agent_id)
+
+            target_items = self.enemies.items()
+            if (
+                    self.map_type in ("MMM", "terran_gen")
+                    and unit.unit_type == self.medivac_id
+            ):
+                # Medivacs cannot heal themselves or other flying units
+                target_items = [
+                    (t_id, t_unit)
+                    for (t_id, t_unit) in self.agents.items()
+                    if t_unit.unit_type != self.medivac_id
+                ]
+
+            # should we only be able to target people in the cone?
+            for t_id, t_unit in target_items:
+                if t_unit.health > 0:
+                    dist = self.distance(
+                        unit.pos.x, unit.pos.y, t_unit.pos.x, t_unit.pos.y
+                    )
+                    can_shoot = (
+                        dist <= shoot_range
+                        if not self.conic_fov
+                        else self.is_position_in_cone(
+                            agent_id, t_unit.pos, range="shoot_range"
+                        )
+                    )
+
+                    if can_shoot:
+                        avail_actions[t_id] = 1
+            return avail_actions
+
+        else:
+            return [0] * self.n_enemies
 
     def get_can_shoot(self, agent_id, t_unit):
         unit = self.get_unit_by_id(agent_id)
@@ -2256,6 +2330,30 @@ class StarCraft2Env(MultiAgentEnv):
         true_avail_actions = []
         for agent_id in range(self.n_agents):
             true_avail_agent = self.get_true_avail_agent_actions(agent_id)
+            true_avail_actions.append(true_avail_agent)
+        return true_avail_actions
+
+    def get_noop(self):
+        """Returns the available actions of all agents in a list."""
+        true_avail_actions = []
+        for agent_id in range(self.n_agents):
+            true_avail_agent = self.get_noop_agent_actions(agent_id)
+            true_avail_actions.append(true_avail_agent)
+        return true_avail_actions
+
+    def get_move(self):
+        """Returns the available actions of all agents in a list."""
+        true_avail_actions = []
+        for agent_id in range(self.n_agents):
+            true_avail_agent = self.get_move_agent_actions(agent_id)
+            true_avail_actions.append(true_avail_agent)
+        return true_avail_actions
+
+    def get_attack(self):
+        """Returns the available actions of all agents in a list."""
+        true_avail_actions = []
+        for agent_id in range(self.n_agents):
+            true_avail_agent = self.get_attack_agent_actions(agent_id)
             true_avail_actions.append(true_avail_agent)
         return true_avail_actions
 
