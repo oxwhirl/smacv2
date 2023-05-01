@@ -321,6 +321,7 @@ class StarCraft2Env(MultiAgentEnv):
         # Lifting this restriction shouldn't be too much work, I've just
         # not done it.
         self.unit_type_bits = map_params["unit_type_bits"]
+        self.dead_bits = 2
         self.map_type = map_params["map_type"]
         self._unit_types = None
 
@@ -1285,6 +1286,13 @@ class StarCraft2Env(MultiAgentEnv):
                 [
                     f"own_unit_type_bit_{bit}"
                     for bit in range(self.unit_type_bits)
+                ]
+            )
+        if self.dead_bits > 0:
+            feature_names.extend(
+                [
+                    f"own_death_bit_{bit}"
+                    for bit in range(self.dead_bits)
                 ]
             )
         if not self.obs_starcraft:
