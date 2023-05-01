@@ -1673,6 +1673,12 @@ class StarCraft2Env(MultiAgentEnv):
             if self.unit_type_bits > 0:
                 type_id = self.get_unit_type_id(unit, True)
                 own_feats[ind + type_id] = 1
+                ind += 1
+            if self.dead_bits > 0:
+                if unit.health > 0:
+                    own_feats[ind] = 1
+                else:
+                    own_feats[ind + 1] = 1
 
         if self.obs_starcraft:
             agent_obs = np.concatenate(
@@ -1922,7 +1928,7 @@ class StarCraft2Env(MultiAgentEnv):
             own_feats += 2
         if self.obs_own_pos and self.obs_starcraft:
             own_feats += 2
-        # own_feats += 1
+        own_feats += 2
         return own_feats
 
     def get_obs_move_feats_size(self):
