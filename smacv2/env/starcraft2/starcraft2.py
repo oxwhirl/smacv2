@@ -1697,6 +1697,11 @@ class StarCraft2Env(MultiAgentEnv):
                     own_feats[ind] = 1
                 else:
                     own_feats[ind + 1] = 1
+                ind += 1
+            if self.cheap_talk:
+                for i in range(self.n_agents):
+                    for j in range(self.comm_bits):
+                        own_feats[i + j] = self.shared_msg[i, j]
 
         if self.obs_starcraft:
             agent_obs = np.concatenate(
@@ -1716,11 +1721,6 @@ class StarCraft2Env(MultiAgentEnv):
             else:
                 agent_obs = np.zeros(1, dtype=np.float32)
                 agent_obs[:] = self._episode_steps / self.episode_limit
-
-        if self.cheap_talk:
-            agent_obs = np.append(
-                agent_obs, self.shared_msg
-            )
 
         if self.debug:
             logging.debug("Obs Agent: {}".format(agent_id).center(60, "-"))
@@ -1952,6 +1952,8 @@ class StarCraft2Env(MultiAgentEnv):
         if self.obs_own_pos and self.obs_starcraft:
             own_feats += 2
         own_feats += 2
+        if self.cheap_talk:
+            own_feats += self.comm_bits * self.n_agents
         return own_feats
 
     def get_obs_move_feats_size(self):
