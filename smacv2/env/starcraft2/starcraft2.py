@@ -112,7 +112,7 @@ class StarCraft2Env(MultiAgentEnv):
             heuristic_rest=False,
             debug=False,
             prob_obs_enemy=0.0,
-            cheap_talk=True
+            cheap_talk=False
     ):
         """
         Create a StarCraftC2Env environment.
@@ -1695,15 +1695,14 @@ class StarCraft2Env(MultiAgentEnv):
                 own_feats[ind + type_id] = 1
                 ind += 1
             if self.dead_bits > 0:
-                if unit.health > 0:
-                    own_feats[ind] = 1
-                else:
-                    own_feats[ind + 1] = 1
+                own_feats[ind] = 1
                 ind += 1
             if self.cheap_talk:
                 for i in range(self.n_agents):
                     for j in range(self.comm_bits):
                         own_feats[i + j] = self.shared_msg[i, j]
+        else:
+            own_feats[-1] = 1
 
         if self.obs_starcraft:
             agent_obs = np.concatenate(
