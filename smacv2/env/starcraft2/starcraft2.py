@@ -1693,10 +1693,10 @@ class StarCraft2Env(MultiAgentEnv):
             if self.unit_type_bits > 0:
                 type_id = self.get_unit_type_id(unit, True)
                 own_feats[ind + type_id] = 1
-                ind += 3
+                ind += self.unit_type_bits
             if self.dead_bits > 0:
                 own_feats[ind] = 1
-                ind += 2
+                ind += self.dead_bits
             if self.cheap_talk:
                 for i in range(self.n_agents):
                     for j in range(self.comm_bits):
@@ -1952,7 +1952,7 @@ class StarCraft2Env(MultiAgentEnv):
             own_feats += 2
         if self.obs_own_pos and self.obs_starcraft:
             own_feats += 2
-        own_feats += 5
+        own_feats += 2
         if self.cheap_talk:
             own_feats += self.comm_bits * self.n_agents
         return own_feats
