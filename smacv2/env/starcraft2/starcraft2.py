@@ -816,7 +816,7 @@ class StarCraft2Env(MultiAgentEnv):
                 ]
             cmd = None
         elif self.cheap_talk and action in range(self.n_actions-self.comm_bits, self.n_actions):
-            self.shared_msg[a_id, action] = int(not(shared_msg[a_id, action]))
+            self.shared_msg[a_id, action] = int(not(self.shared_msg[a_id, action]))
 
         else:
             # attack/heal units that are in range
