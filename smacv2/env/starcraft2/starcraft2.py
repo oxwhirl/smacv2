@@ -111,7 +111,8 @@ class StarCraft2Env(MultiAgentEnv):
             heuristic_ai=False,
             heuristic_rest=False,
             debug=False,
-            prob_obs_enemy=0.0
+            prob_obs_enemy=0.0,
+            cheap_talk=True
     ):
         """
         Create a StarCraftC2Env environment.
@@ -208,6 +209,8 @@ class StarCraft2Env(MultiAgentEnv):
             Log messages about observations, state, actions and rewards for
             debugging purposes (default is False).
         """
+        self.cheap_talk = cheap_talk
+
         # Map arguments
         self.map_name = map_name
         map_params = get_map_params(self.map_name)
@@ -308,6 +311,8 @@ class StarCraft2Env(MultiAgentEnv):
 
         self.n_actions_no_attack = self.n_actions_move + self.n_fov_actions + 2
         self.n_actions = self.n_actions_no_attack + self.n_enemies
+        if self.cheap_talk:
+            self.n_actions += self.comm_bits
 
         # Map info
         self._agent_race = map_params["a_race"]
@@ -322,6 +327,8 @@ class StarCraft2Env(MultiAgentEnv):
         # not done it.
         self.unit_type_bits = map_params["unit_type_bits"]
         self.dead_bits = 2
+        self.comm_bits = 8
+        self.shared_msg = np.zeros((self.n_agents, 8))
         self.map_type = map_params["map_type"]
         self._unit_types = None
 
@@ -808,6 +815,9 @@ class StarCraft2Env(MultiAgentEnv):
                 action - 6
                 ]
             cmd = None
+        elif self.cheap_talk and action in range(self.n_actions-self.comm_bits, self.n_actions):
+            self.shared_msg[a_id, action] = int(not(shared_msg[a_id, action]))
+
         else:
             # attack/heal units that are in range
             target_id = action - self.n_actions_no_attack
@@ -1707,6 +1717,11 @@ class StarCraft2Env(MultiAgentEnv):
                 agent_obs = np.zeros(1, dtype=np.float32)
                 agent_obs[:] = self._episode_steps / self.episode_limit
 
+        if self.cheap_talk:
+            agent_obs = np.append(
+                agent_obs, self.shared_msg
+            )
+
         if self.debug:
             logging.debug("Obs Agent: {}".format(agent_id).center(60, "-"))
             logging.debug(
@@ -2177,6 +2192,9 @@ class StarCraft2Env(MultiAgentEnv):
                     )
                     if can_shoot:
                         avail_actions[t_id + self.n_actions_no_attack] = 1
+
+            if self.cheap_talk:
+                avail_actions[-self.comm_bits] = 1
 
             return avail_actions
 
