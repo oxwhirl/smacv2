@@ -306,6 +306,8 @@ class StarCraft2Env(MultiAgentEnv):
         self.use_unit_ranges = use_unit_ranges
         self.min_attack_range = min_attack_range
 
+        self.comm_bits = 8
+
         # Actions
         self.n_actions_move = 4
 
@@ -327,7 +329,6 @@ class StarCraft2Env(MultiAgentEnv):
         # not done it.
         self.unit_type_bits = map_params["unit_type_bits"]
         self.dead_bits = 2
-        self.comm_bits = 8
         self.shared_msg = np.zeros((self.n_agents, 8))
         self.map_type = map_params["map_type"]
         self._unit_types = None
@@ -457,9 +458,8 @@ class StarCraft2Env(MultiAgentEnv):
         )
         self._controller.create_game(create)
 
-        join = sc_pb.RequestJoinGame(
-            race=races[self._agent_race], options=interface_options
-        )
+        self.game = sc_pb.RequestJoinGame(race=races[self._agent_race], options=interface_options)
+        join = self.game
         self._controller.join_game(join)
 
         game_info = self._controller.game_info()
