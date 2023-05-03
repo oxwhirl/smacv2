@@ -2197,7 +2197,7 @@ class StarCraft2Env(MultiAgentEnv):
                         avail_actions[t_id + self.n_actions_no_attack] = 1
 
             if self.cheap_talk:
-                avail_actions[-self.comm_bits:] = 1
+                avail_actions[-self.comm_bits:] = [1] * self.comm_bits
 
             return avail_actions
 
