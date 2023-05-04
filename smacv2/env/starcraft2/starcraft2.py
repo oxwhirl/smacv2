@@ -328,7 +328,7 @@ class StarCraft2Env(MultiAgentEnv):
         # Lifting this restriction shouldn't be too much work, I've just
         # not done it.
         self.unit_type_bits = map_params["unit_type_bits"]
-        self.dead_bits = 2
+        self.dead_bits = 1
         self.shared_msg = np.zeros((self.n_agents, 8))
         self.map_type = map_params["map_type"]
         self._unit_types = None
@@ -1701,8 +1701,6 @@ class StarCraft2Env(MultiAgentEnv):
                 for i in range(self.n_agents):
                     for j in range(self.comm_bits):
                         own_feats[i + j] = self.shared_msg[i, j]
-        else:
-            own_feats[-1] = 1
 
         if self.obs_starcraft:
             agent_obs = np.concatenate(
@@ -1952,7 +1950,7 @@ class StarCraft2Env(MultiAgentEnv):
             own_feats += 2
         if self.obs_own_pos and self.obs_starcraft:
             own_feats += 2
-        own_feats += 2
+        own_feats += 1
         if self.cheap_talk:
             own_feats += self.comm_bits * self.n_agents
         return own_feats
