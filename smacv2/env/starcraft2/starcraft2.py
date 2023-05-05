@@ -2264,11 +2264,11 @@ class StarCraft2Env(MultiAgentEnv):
         unit = self.get_unit_by_id(agent_id)
         if unit.health > 0:
             # cannot choose no-op when alive
-            avail_actions = 0
+            avail_actions = [0]
             return avail_actions
 
         else:
-            return 1
+            return [1]
 
     def get_move_agent_actions(self, agent_id):
         """Returns the available actions for agent_id."""
@@ -2340,7 +2340,7 @@ class StarCraft2Env(MultiAgentEnv):
             return avail_actions
 
         else:
-            return [[0, 1]] * self.n_enemies
+            return [0] * self.n_enemies
 
     def get_can_shoot(self, agent_id, t_unit):
         unit = self.get_unit_by_id(agent_id)
