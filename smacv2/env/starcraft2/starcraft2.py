@@ -312,7 +312,10 @@ class StarCraft2Env(MultiAgentEnv):
         self.n_actions_move = 4
 
         self.n_actions_no_attack = self.n_actions_move + self.n_fov_actions + 2
-        self.n_actions = self.n_actions_no_attack + self.n_enemies
+        if map_params["map_type"] in ["MMM", "terran_gen"] and self.n_agents > self.n_enemies:
+            self.n_actions = self.n_actions_no_attack + self.n_agents
+        else:
+            self.n_actions = self.n_actions_no_attack + self.n_enemies
         if self.cheap_talk:
             self.n_actions += self.comm_bits
 
@@ -2179,22 +2182,22 @@ class StarCraft2Env(MultiAgentEnv):
             # should we only be able to target people in the cone?
             for t_id, t_unit in target_items:
                 if t_unit.health > 0:
-                    if unit.unit_type != self.medivac_id:
-                        avail_actions[t_id + self.n_actions_no_attack] = 1
-                    else:
-                        dist = self.distance(
-                            unit.pos.x, unit.pos.y, t_unit.pos.x, t_unit.pos.y
-                        )
-                        can_shoot = (
-                            dist <= shoot_range
-                            if not self.conic_fov
-                            else self.is_position_in_cone(
-                                agent_id, t_unit.pos, range="shoot_range"
-                            )
-                        )
+                    avail_actions[t_id + self.n_actions_no_attack] = 1
 
-                        if can_shoot:
-                            avail_actions[t_id + self.n_actions_no_attack] = 1
+                    # dist = self.distance(
+                    #     unit.pos.x, unit.pos.y, t_unit.pos.x, t_unit.pos.y
+                    # )
+                    # can_shoot = (
+                    #     dist <= shoot_range
+                    #     if not self.conic_fov
+                    #     else self.is_position_in_cone(
+                    #         agent_id, t_unit.pos, range="shoot_range"
+                    #     )
+                    # )
+                    #
+                    # if can_shoot:
+                    #     avail_actions[t_id + self.n_actions_no_attack] = 1
+
             return avail_actions
 
         else:
