@@ -2307,45 +2307,57 @@ class StarCraft2Env(MultiAgentEnv):
     def get_attack_agent_actions(self, agent_id):
         """Returns the available actions for agent_id."""
         unit = self.get_unit_by_id(agent_id)
-        if unit.health > 0:
-            # cannot choose no-op when alive
-            avail_actions = [0] * self.n_enemies
-
-            # Can attack only alive units that are alive in the shooting range
-            shoot_range = self.unit_shoot_range(agent_id)
-
-            target_items = self.enemies.items()
-            if (
-                    self.map_type in ("MMM", "terran_gen")
-                    and unit.unit_type == self.medivac_id
-            ):
-                # Medivacs cannot heal themselves or other flying units
-                target_items = [
-                    (t_id, t_unit)
-                    for (t_id, t_unit) in self.agents.items()
-                    if t_unit.unit_type != self.medivac_id
-                ]
-
-            # should we only be able to target people in the cone?
-            for t_id, t_unit in target_items:
-                if t_unit.health > 0:
-                    dist = self.distance(
-                        unit.pos.x, unit.pos.y, t_unit.pos.x, t_unit.pos.y
-                    )
-                    can_shoot = (
-                        dist <= shoot_range
-                        if not self.conic_fov
-                        else self.is_position_in_cone(
-                            agent_id, t_unit.pos, range="shoot_range"
-                        )
-                    )
-
-                    if can_shoot:
-                        avail_actions[t_id] = 1
-            return avail_actions
-
-        else:
+        if (
+                self.map_type in ("MMM", "terran_gen")
+                and self.n_agents > self.n_enemies
+        ):
             return [0] * self.n_enemies
+        else:
+            if unit.health > 0:
+                # cannot choose no-op when alive
+                if (
+                        self.map_type in ("MMM", "terran_gen")
+                        and self.n_agents > self.n_enemies
+                ):
+                    avail_actions = [0] * self.n_allies
+                else:
+                    avail_actions = [0] * self.n_enemies
+
+                # Can attack only alive units that are alive in the shooting range
+                shoot_range = self.unit_shoot_range(agent_id)
+
+                target_items = self.enemies.items()
+                if (
+                        self.map_type in ("MMM", "terran_gen")
+                        and unit.unit_type == self.medivac_id
+                ):
+                    # Medivacs cannot heal themselves or other flying units
+                    target_items = [
+                        (t_id, t_unit)
+                        for (t_id, t_unit) in self.agents.items()
+                        if t_unit.unit_type != self.medivac_id
+                    ]
+
+                # should we only be able to target people in the cone?
+                for t_id, t_unit in target_items:
+                    if t_unit.health > 0:
+                        dist = self.distance(
+                            unit.pos.x, unit.pos.y, t_unit.pos.x, t_unit.pos.y
+                        )
+                        can_shoot = (
+                            dist <= shoot_range
+                            if not self.conic_fov
+                            else self.is_position_in_cone(
+                                agent_id, t_unit.pos, range="shoot_range"
+                            )
+                        )
+
+                        if can_shoot:
+                            avail_actions[t_id] = 1
+                return avail_actions
+
+            else:
+                return [0] * self.n_enemies
 
     def get_can_shoot(self, agent_id, t_unit):
         unit = self.get_unit_by_id(agent_id)
