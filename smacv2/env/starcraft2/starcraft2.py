@@ -2179,29 +2179,24 @@ class StarCraft2Env(MultiAgentEnv):
             # should we only be able to target people in the cone?
             for t_id, t_unit in target_items:
                 if t_unit.health > 0:
-                    avail_actions[t_id + self.n_actions_no_attack] = 1
+                    # avail_actions[t_id + self.n_actions_no_attack] = 1
+                    dist = self.distance(
+                        unit.pos.x, unit.pos.y, t_unit.pos.x, t_unit.pos.y
+                    )
+                    can_shoot = (
+                        dist <= shoot_range
+                        if not self.conic_fov
+                        else self.is_position_in_cone(
+                            agent_id, t_unit.pos, range="shoot_range"
+                        )
+                    )
 
-                    # dist = self.distance(
-                    #     unit.pos.x, unit.pos.y, t_unit.pos.x, t_unit.pos.y
-                    # )
-                    # can_shoot = (
-                    #     dist <= shoot_range
-                    #     if not self.conic_fov
-                    #     else self.is_position_in_cone(
-                    #         agent_id, t_unit.pos, range="shoot_range"
-                    #     )
-                    # )
-                    # if can_shoot:
-                    #     avail_actions[t_id + self.n_actions_no_attack] = 1
-
-            if self.cheap_talk:
-                avail_actions[-self.comm_bits:] = [1] * self.comm_bits
-
+                    if can_shoot:
+                        avail_actions[t_id + self.n_actions_no_attack] = 1
             return avail_actions
 
         else:
-            # only no-op allowed
-            return [1] + [0] * (self.n_actions - 1)
+            return [0] + [1] * (self.n_actions - 1)
         
     def get_true_avail_agent_actions(self, agent_id):
         """Returns the available actions for agent_id."""
