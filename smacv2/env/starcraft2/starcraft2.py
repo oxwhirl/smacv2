@@ -2264,30 +2264,30 @@ class StarCraft2Env(MultiAgentEnv):
         unit = self.get_unit_by_id(agent_id)
         if unit.health > 0:
             # cannot choose no-op when alive
-            avail_actions = [[0, 1]]
+            avail_actions = [0]
             return avail_actions
 
         else:
-            return [[1, 0]]
+            return [1]
 
     def get_move_agent_actions(self, agent_id):
         """Returns the available actions for agent_id."""
         unit = self.get_unit_by_id(agent_id)
         if unit.health > 0:
-            avail_actions = [[0, 1]] * (self.n_actions_move + 1)
+            avail_actions = [0] * (self.n_actions_move + 1)
 
             # stop should be allowed
-            avail_actions[0] = [1, 0]
+            avail_actions[0] = 1
 
             # see if we can move
             if self.can_move(unit, Direction.NORTH):
-                avail_actions[1] = [1, 0]
+                avail_actions[1] = 1
             if self.can_move(unit, Direction.SOUTH):
-                avail_actions[2] = [1, 0]
+                avail_actions[2] = 1
             if self.can_move(unit, Direction.EAST):
-                avail_actions[3] = [1, 0]
+                avail_actions[3] = 1
             if self.can_move(unit, Direction.WEST):
-                avail_actions[4] = [1, 0]
+                avail_actions[4] = 1
 
             # if self.conic_fov:
             #     avail_actions[6: 6 + self.n_fov_actions] = [
@@ -2297,14 +2297,14 @@ class StarCraft2Env(MultiAgentEnv):
 
         else:
             # only no-op allowed
-            return [[0, 1]] * (self.n_actions_move + 1)
+            return [0] * (self.n_actions_move + 1)
 
     def get_attack_agent_actions(self, agent_id):
         """Returns the available actions for agent_id."""
         unit = self.get_unit_by_id(agent_id)
         if unit.health > 0:
             # cannot choose no-op when alive
-            avail_actions = [[0, 1]] * self.n_enemies
+            avail_actions = [0] * self.n_enemies
 
             # Can attack only alive units that are alive in the shooting range
             shoot_range = self.unit_shoot_range(agent_id)
@@ -2336,7 +2336,7 @@ class StarCraft2Env(MultiAgentEnv):
                     )
 
                     if can_shoot:
-                        avail_actions[t_id] = [1, 0]
+                        avail_actions[t_id] = 1
             return avail_actions
 
         else:
