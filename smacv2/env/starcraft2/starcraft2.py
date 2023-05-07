@@ -1953,7 +1953,7 @@ class StarCraft2Env(MultiAgentEnv):
             own_feats += 2
         if self.obs_own_pos and self.obs_starcraft:
             own_feats += 2
-        own_feats += 1
+        # own_feats += 1
         if self.cheap_talk:
             own_feats += self.comm_bits * self.n_agents
         return own_feats
