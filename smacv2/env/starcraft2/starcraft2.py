@@ -331,7 +331,7 @@ class StarCraft2Env(MultiAgentEnv):
         # Lifting this restriction shouldn't be too much work, I've just
         # not done it.
         self.unit_type_bits = map_params["unit_type_bits"]
-        self.dead_bits = 1
+        self.dead_bits = 0
         self.shared_msg = np.zeros((self.n_agents, 8))
         self.map_type = map_params["map_type"]
         self._unit_types = None
