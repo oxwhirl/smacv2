@@ -2201,7 +2201,7 @@ class StarCraft2Env(MultiAgentEnv):
             return avail_actions
 
         else:
-            return [0] + [1] * (self.n_actions - 1)
+            return [1] + [0] * (self.n_actions - 1)
         
     def get_true_avail_agent_actions(self, agent_id):
         """Returns the available actions for agent_id."""
@@ -2262,7 +2262,7 @@ class StarCraft2Env(MultiAgentEnv):
             return avail_actions
 
         else:
-            return [0] + [1] * (self.n_actions - 1)
+            return [1] + [0] * (self.n_actions - 1)
 
     def get_noop_agent_actions(self, agent_id):
         """Returns the available actions for agent_id."""
