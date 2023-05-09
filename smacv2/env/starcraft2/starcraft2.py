@@ -1561,7 +1561,7 @@ class StarCraft2Env(MultiAgentEnv):
                         e_unit.health > 0 and fully_observable
                 ):  # visible and alive
                     # Sight range > shoot range
-                    enemy_feats[e_id, 0] = avail_actions[
+                    enemy_feats[e_id, 0] = true_avail_actions[
                         self.n_actions_no_attack + e_id
                         ]  # available
                     enemy_feats[e_id, 1] = dist / sight_range  # distance
