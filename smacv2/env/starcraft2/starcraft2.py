@@ -111,7 +111,7 @@ class StarCraft2Env(MultiAgentEnv):
             heuristic_ai=False,
             heuristic_rest=False,
             debug=False,
-            prob_obs_enemy=0.0,
+            prob_obs_enemy=1.0,
             cheap_talk=False
     ):
         """
@@ -1522,6 +1522,7 @@ class StarCraft2Env(MultiAgentEnv):
             # Movement features. Do not need similar for looking
             # around because this is always possible
             avail_actions = self.get_avail_agent_actions(agent_id)
+            true_avail_actions = self.get_true_avail_agent_actions(agent_id)
             for m in range(self.n_actions_move):
                 move_feats[m] = avail_actions[m + 2]
 
