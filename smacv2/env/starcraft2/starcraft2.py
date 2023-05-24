@@ -316,8 +316,8 @@ class StarCraft2Env(MultiAgentEnv):
             self.n_actions = self.n_actions_no_attack + self.n_agents
         else:
             self.n_actions = self.n_actions_no_attack + self.n_enemies
-        if self.cheap_talk:
-            self.n_actions += self.comm_bits
+        # if self.cheap_talk:
+        #     self.n_actions += self.comm_bits
 
         # Map info
         self._agent_race = map_params["a_race"]
@@ -721,6 +721,9 @@ class StarCraft2Env(MultiAgentEnv):
 
         return reward, terminated, info
 
+    # def get_agent_comms(self, aid, comms):
+
+
     def get_agent_action(self, a_id, action):
         """Construct the action for agent a_id."""
         avail_actions = self.get_avail_agent_actions(a_id)
@@ -732,6 +735,9 @@ class StarCraft2Env(MultiAgentEnv):
         tag = unit.tag
         x = unit.pos.x
         y = unit.pos.y
+
+        # if cheap_talk:
+
 
         if action == 0:
             # no-op (valid only when dead)
@@ -2182,21 +2188,21 @@ class StarCraft2Env(MultiAgentEnv):
             # should we only be able to target people in the cone?
             for t_id, t_unit in target_items:
                 if t_unit.health > 0:
-                    avail_actions[t_id + self.n_actions_no_attack] = 1
+                    # avail_actions[t_id + self.n_actions_no_attack] = 1
 
-                    # dist = self.distance(
-                    #     unit.pos.x, unit.pos.y, t_unit.pos.x, t_unit.pos.y
-                    # )
-                    # can_shoot = (
-                    #     dist <= shoot_range
-                    #     if not self.conic_fov
-                    #     else self.is_position_in_cone(
-                    #         agent_id, t_unit.pos, range="shoot_range"
-                    #     )
-                    # )
-                    #
-                    # if can_shoot:
-                    #     avail_actions[t_id + self.n_actions_no_attack] = 1
+                    dist = self.distance(
+                        unit.pos.x, unit.pos.y, t_unit.pos.x, t_unit.pos.y
+                    )
+                    can_shoot = (
+                        dist <= shoot_range
+                        if not self.conic_fov
+                        else self.is_position_in_cone(
+                            agent_id, t_unit.pos, range="shoot_range"
+                        )
+                    )
+
+                    if can_shoot:
+                        avail_actions[t_id + self.n_actions_no_attack] = 1
 
             return avail_actions
 
