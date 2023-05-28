@@ -608,9 +608,12 @@ class StarCraft2Env(MultiAgentEnv):
                 units_to_kill.append(al_unit.tag)
         self._kill_units(units_to_kill)
 
-    def step(self, actions):
+    def step(self, actions, comms):
         """A single environment step. Returns reward, terminated, info."""
         actions_int = [int(a) for a in actions]
+
+        for a_id, comm in enumerate(comms):
+            self.shared_msg[a_id] = comm
 
         self.last_action = np.eye(self.n_actions)[np.array(actions_int)]
 
@@ -736,9 +739,6 @@ class StarCraft2Env(MultiAgentEnv):
         x = unit.pos.x
         y = unit.pos.y
 
-        # if cheap_talk:
-
-
         if action == 0:
             # no-op (valid only when dead)
             assert unit.health == 0, "No-op only available for dead agents."
@@ -824,10 +824,10 @@ class StarCraft2Env(MultiAgentEnv):
                 action - 6
                 ]
             cmd = None
-        elif self.cheap_talk and action in range(self.n_actions-self.comm_bits, self.n_actions):
-            a = action - self.n_actions_no_attack - self.n_enemies
-            self.shared_msg[a_id, a] = int(not(self.shared_msg[a_id, a]))
-            cmd = None
+        # elif self.cheap_talk and action in range(self.n_actions-self.comm_bits, self.n_actions):
+        #     a = action - self.n_actions_no_attack - self.n_enemies
+        #     self.shared_msg[a_id, a] = int(not(self.shared_msg[a_id, a]))
+        #     cmd = None
 
         else:
             # attack/heal units that are in range
