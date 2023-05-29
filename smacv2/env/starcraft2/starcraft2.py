@@ -608,8 +608,9 @@ class StarCraft2Env(MultiAgentEnv):
                 units_to_kill.append(al_unit.tag)
         self._kill_units(units_to_kill)
 
-    def step(self, actions, comms):
+    def step(self, data):
         """A single environment step. Returns reward, terminated, info."""
+        actions, comms = data
         actions_int = [int(a) for a in actions]
 
         for a_id, comm in enumerate(comms):
