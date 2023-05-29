@@ -613,8 +613,8 @@ class StarCraft2Env(MultiAgentEnv):
         actions, comms = data
         actions_int = [int(a) for a in actions]
 
-        for a_id, comm in enumerate(comms):
-            self.shared_msg[a_id] = comm
+        for a_id in range(self.n_agents):
+            self.shared_msg[a_id] = comms[a_id]
 
         self.last_action = np.eye(self.n_actions)[np.array(actions_int)]
 
