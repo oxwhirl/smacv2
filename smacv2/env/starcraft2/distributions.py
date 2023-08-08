@@ -119,9 +119,9 @@ class WeightedTeamsDistribution(Distribution):
         self.units = np.array(config["unit_types"])
         self.n_units = config["n_units"]
         self.n_enemies = config["n_enemies"]
-        assert (
-            self.n_enemies >= self.n_units
-        ), "Only handle larger number of enemies than allies"
+        # assert (
+        #     self.n_enemies >= self.n_units
+        # ), "Only handle larger number of enemies than allies"
         self.weights = np.array(config["weights"])
         # unit types that cannot make up the whole team
         self.exceptions = config.get("exception_unit_types", set())
@@ -148,6 +148,8 @@ class WeightedTeamsDistribution(Distribution):
                 self.n_enemies - self.n_units, use_exceptions=True
             )
             enemy_team.extend(extra_enemies)
+        elif self.n_enemies < self.n_units:
+            enemy_team = enemy_team[:self.n_enemies]
 
         return {
             self.env_key: {
@@ -233,9 +235,9 @@ class ReflectPositionDistribution(Distribution):
         self.config = config
         self.n_units = config["n_units"]
         self.n_enemies = config["n_enemies"]
-        assert (
-            self.n_enemies >= self.n_units
-        ), "Number of enemies must be >= number of units"
+        # assert (
+        #     self.n_enemies >= self.n_units
+        # ), "Number of enemies must be >= number of units"
         self.map_x = config["map_x"]
         self.map_y = config["map_y"]
         config_copy = deepcopy(config)
@@ -260,14 +262,18 @@ class ReflectPositionDistribution(Distribution):
         ally_positions_dict = self.pos_generator.generate()
         ally_positions = ally_positions_dict["ally_start_positions"]["item"]
         enemy_positions = np.zeros((self.n_enemies, 2))
-        enemy_positions[: self.n_units, 0] = self.map_x - ally_positions[:, 0]
-        enemy_positions[: self.n_units, 1] = ally_positions[:, 1]
-        if self.n_enemies > self.n_units:
-            gen_enemy_positions = self.enemy_pos_generator.generate()
-            gen_enemy_positions = gen_enemy_positions["enemy_start_positions"][
-                "item"
-            ]
-            enemy_positions[self.n_units :, :] = gen_enemy_positions
+        if self.n_enemies >= self.n_units:
+            enemy_positions[: self.n_units, 0] = self.map_x - ally_positions[:, 0]
+            enemy_positions[: self.n_units, 1] = ally_positions[:, 1]
+            if self.n_enemies > self.n_units:
+                gen_enemy_positions = self.enemy_pos_generator.generate()
+                gen_enemy_positions = gen_enemy_positions["enemy_start_positions"][
+                    "item"
+                ]
+                enemy_positions[self.n_units:, :] = gen_enemy_positions
+        else:
+            enemy_positions[:, 0] = self.map_x - ally_positions[: self.n_enemies, 0]
+            enemy_positions[:, 1] = ally_positions[: self.n_enemies, 1]
         return {
             "ally_start_positions": {"item": ally_positions, "id": 0},
             "enemy_start_positions": {"item": enemy_positions, "id": 0},
