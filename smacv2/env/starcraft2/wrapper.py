@@ -1,5 +1,5 @@
 from smacv2.env.starcraft2.distributions import get_distribution
-from smacv2.env.starcraft2.starcraft2 import StarCraft2Env
+from smacv2.env.starcraft2.starcraft2 import StarCraft2Env, CannotResetException
 from smacv2.env import MultiAgentEnv
 
 
@@ -26,11 +26,15 @@ class StarCraftCapabilityEnvWrapper(MultiAgentEnv):
             self.env_key_to_distribution_map[env_key] = distribution
 
     def reset(self):
-        reset_config = {}
-        for distribution in self.env_key_to_distribution_map.values():
-            reset_config = {**reset_config, **distribution.generate()}
+        try:
+            reset_config = {}
+            for distribution in self.env_key_to_distribution_map.values():
+                reset_config = {**reset_config, **distribution.generate()}
 
-        return self.env.reset(reset_config)
+            return self.env.reset(reset_config)
+        except CannotResetException as cre:
+            # just retry
+            self.reset()
 
     def __getattr__(self, name):
         if hasattr(self.env, name):
