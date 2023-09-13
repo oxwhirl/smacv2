@@ -2373,7 +2373,7 @@ class StarCraft2Env(MultiAgentEnv):
             except (protocol.ProtocolError, protocol.ConnectionError):
                 self.full_restart()
                 self.reset(episode_config=episode_config)
-        while True:
+        for i in range(1000):
             # Sometimes not all units have yet been created by SC2
             self.agents = {}
             self.enemies = {}
@@ -2434,6 +2434,8 @@ class StarCraft2Env(MultiAgentEnv):
             except (protocol.ProtocolError, protocol.ConnectionError):
                 self.full_restart()
                 self.reset(episode_config=episode_config)
+        # probably had some error when spawning
+        self.reset(episode_config=episode_config)
 
     def get_unit_types(self):
         if self._unit_types is None:
