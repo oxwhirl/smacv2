@@ -63,6 +63,8 @@ class Direction(enum.IntEnum):
 
 EPS = 1e-7
 
+class CannotResetException(Exception):
+    pass
 
 class StarCraft2Env(MultiAgentEnv):
     """The StarCraft II environment for decentralised multi-agent
@@ -2435,7 +2437,7 @@ class StarCraft2Env(MultiAgentEnv):
                 self.full_restart()
                 self.reset(episode_config=episode_config)
         # probably had some error when spawning
-        self.reset(episode_config=episode_config)
+        raise CannotResetException("waited for units to spawn and they didn't")
 
     def get_unit_types(self):
         if self._unit_types is None:
