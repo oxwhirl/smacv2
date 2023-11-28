@@ -2,7 +2,7 @@
 
 Logging of the experiments is via [wandb.ai](https://wandb.ai/). Before trying to replicate the experiments here, you will have to create a WandB account. If you have any questions about these instructions please [raise an issue](https://github.com/oxwhirl/smacv2/issues/new/choose).
 
-To make WandB work, you will need to copy your
+To make WandB work, you will need to copy your wandb api key. You can do this by going to your image on the top right > user settings > danger zone > API keys. Copy this and put it into a file. Set the location of this file in an environment variable called `WANDB_API_KEY_FILE`. Use, for example, `export WANDB_API_KEY_FILE=$HOME/.wandb_api_key`. 
 
 # Running SMACv2 Baselines
 
