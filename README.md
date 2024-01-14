@@ -227,7 +227,7 @@ if __name__ == "__main__":
 If you use SMACv2 in your work, please cite:
 
 ```
-@inproceedings{ellis2023smacv,
+@inproceedings{ellis2023smacv2,
     title={{SMAC}v2: An Improved Benchmark for Cooperative Multi-Agent Reinforcement Learning},
     author={Benjamin Ellis and Jonathan Cook and Skander Moalla and Mikayel Samvelyan and Mingfei Sun and Anuj Mahajan and Jakob Nicolaus Foerster and Shimon Whiteson},
     booktitle={Thirty-seventh Conference on Neural Information Processing Systems Datasets and Benchmarks Track},
