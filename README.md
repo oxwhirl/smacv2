@@ -227,13 +227,13 @@ if __name__ == "__main__":
 If you use SMACv2 in your work, please cite:
 
 ```
-@misc{ellis2022smacv2,
-  url = {https://arxiv.org/abs/2212.07489},
-  author = {Ellis, Benjamin and Moalla, Skander and Samvelyan, Mikayel and Sun, Mingfei and Mahajan, Anuj and Foerster, Jakob N. and Whiteson, Shimon},
-  title = {SMACv2: An Improved Benchmark for Cooperative Multi-Agent Reinforcement Learning},
-  publisher = {arXiv},
-  year = {2022},
-} 
+@inproceedings{ellis2023smacv,
+    title={{SMAC}v2: An Improved Benchmark for Cooperative Multi-Agent Reinforcement Learning},
+    author={Benjamin Ellis and Jonathan Cook and Skander Moalla and Mikayel Samvelyan and Mingfei Sun and Anuj Mahajan and Jakob Nicolaus Foerster and Shimon Whiteson},
+    booktitle={Thirty-seventh Conference on Neural Information Processing Systems Datasets and Benchmarks Track},
+    year={2023},
+    url={https://openreview.net/forum?id=5OjLGiJW3u}
+}
 ```
 
 # FAQ
