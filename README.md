@@ -151,12 +151,12 @@ from __future__ import division
 from __future__ import print_function
 from os import replace
 
-from smac.env import StarCraft2Env
+from smacv2.env import StarCraft2Env
 import numpy as np
 from absl import logging
 import time
 
-from smac.env.starcraft2.wrapper import StarCraftCapabilityEnvWrapper
+from smacv2.env.starcraft2.wrapper import StarCraftCapabilityEnvWrapper
 
 logging.set_verbosity(logging.DEBUG)
 
