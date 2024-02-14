@@ -164,6 +164,7 @@ def main():
 
     distribution_config = {
         "n_units": 5,
+        "n_enemies": 5,
         "team_gen": {
             "dist_type": "weighted_teams",
             "unit_types": ["marine", "marauder", "medivac"],
