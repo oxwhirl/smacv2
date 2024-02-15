@@ -723,6 +723,9 @@ class StarCraft2Env(MultiAgentEnv):
 
     def get_agent_action(self, a_id, action):
         """Construct the action for agent a_id."""
+        self.new_unit_positions = np.copy(self.new_unit_positions)
+        self.new_unit_positions.setflags(write=1)
+
         avail_actions = self.get_avail_agent_actions(a_id)
         assert (
             avail_actions[action] == 1

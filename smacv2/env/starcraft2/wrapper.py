@@ -37,10 +37,24 @@ class StarCraftCapabilityEnvWrapper(MultiAgentEnv):
             self.reset()
 
     def __getattr__(self, name):
-        if hasattr(self.env, name):
-            return getattr(self.env, name)
-        else:
-            raise AttributeError
+        # Special handling for serialization
+        if name in ['__getstate__', '__setstate__']:
+            raise AttributeError(f"'{self.__class__.__name__}' object does not support serialization")
+
+        # Prevent recursion by checking if the attribute is already being looked up
+        if '_looking_up' in self.__dict__ and self._looking_up == name:
+            raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
+
+        # Mark that we are looking up this attribute
+        self._looking_up = name
+        try:
+            if hasattr(self.env, name):
+                return getattr(self.env, name)
+            else:
+                raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{name}'")
+        finally:
+            # Clear the lookup marker
+            del self._looking_up
 
     def get_obs(self):
         return self.env.get_obs()
