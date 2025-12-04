@@ -834,7 +834,7 @@ class StarCraft2Env(MultiAgentEnv):
                 action_name = "attack"
 
             if self.stochastic_attack:
-                p = np.random.default_rng().uniform()
+                p = np.random.default_rng(seed=np.random.randint(9999999)).uniform()
                 if p > self.agent_attack_probabilities[a_id]:
                     if self.debug:
                         logging.debug(

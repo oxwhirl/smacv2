@@ -125,7 +125,7 @@ class WeightedTeamsDistribution(Distribution):
         self.weights = np.array(config["weights"])
         # unit types that cannot make up the whole team
         self.exceptions = config.get("exception_unit_types", set())
-        self.rng = default_rng()
+        self.rng = default_rng(seed=np.random.randint(9999999))
         self.env_key = config["env_key"]
 
     def _gen_team(self, n_units: int, use_exceptions: bool):
@@ -178,7 +178,7 @@ class PerAgentUniformDistribution(Distribution):
         self.upper_bound = config["upper_bound"]
         self.env_key = config["env_key"]
         self.n_units = config["n_units"]
-        self.rng = default_rng()
+        self.rng = default_rng(seed=np.random.randint(9999999))
 
     def generate(self) -> Dict[str, Dict[str, Any]]:
         probs = self.rng.uniform(
@@ -202,7 +202,7 @@ class MaskDistribution(Distribution):
         self.mask_probability = config["mask_probability"]
         self.n_units = config["n_units"]
         self.n_enemies = config["n_enemies"]
-        self.rng = default_rng()
+        self.rng = default_rng(seed=np.random.randint(9999999))
 
     def generate(self) -> Dict[str, Dict[str, Any]]:
         mask = self.rng.choice(
@@ -300,7 +300,7 @@ class SurroundedPositionDistribution(Distribution):
         self.n_enemies = config["n_enemies"]
         self.map_x = config["map_x"]
         self.map_y = config["map_y"]
-        self.rng = default_rng()
+        self.rng = default_rng(seed=np.random.randint(9999999))
 
     def generate(self) -> Dict[str, Dict[str, Any]]:
         # need multiple centre points because SC2 does not cope with
@@ -367,7 +367,7 @@ class SurroundedAndReflectPositionDistribution(Distribution):
         self.p_threshold = config["p"]
         self.surrounded_distribution = SurroundedPositionDistribution(config)
         self.reflect_distribution = ReflectPositionDistribution(config)
-        self.rng = default_rng()
+        self.rng = default_rng(seed=np.random.randint(9999999))
 
     def generate(self) -> Dict[str, Dict[str, Any]]:
         p = self.rng.random()
